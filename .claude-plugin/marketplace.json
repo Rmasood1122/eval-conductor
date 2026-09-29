@@ -1,0 +1,11 @@
+{
+  "name": "eval-conductor-marketplace",
+  "owner": { "name": "Rehan Masood", "url": "https://github.com/Rmasood1122" },
+  "plugins": [
+    {
+      "name": "eval-conductor",
+      "source": "./",
+      "description": "Fail-closed eval release gates + evidence-gated build ledger. /eval-init installs gates into any repo."
+    }
+  ]
+}
