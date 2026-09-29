@@ -20,5 +20,8 @@
     "quality",
     "eval-driven-development"
   ],
-  "icon": "./.claude-plugin/icon.svg"
+  "icon": "./.claude-plugin/icon.svg",
+  "supportUrl": "https://github.com/Rmasood1122/eval-conductor/issues",
+  "documentationUrl": "https://github.com/Rmasood1122/eval-conductor#readme",
+  "privacyPolicyUrl": "https://github.com/Rmasood1122/eval-conductor/blob/main/PRIVACY.md"
 }
