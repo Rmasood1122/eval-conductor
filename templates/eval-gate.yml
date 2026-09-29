@@ -1,0 +1,23 @@
+name: eval-gate
+# The gate runs on every push and PR — including changes to the gate itself.
+on:
+  push:
+  pull_request:
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Registry schema lint (hard block)
+        run: python evals/tools/registry_lint.py evals/registry.yaml
+      - name: Produce candidate
+        # EDIT: replace with your eval command — it must write evals/candidate.json
+        run: echo "REPLACE ME — run your evals here" && test -f evals/candidate.json
+      - name: Gate (candidate vs baseline)
+        run: python evals/tools/promote.py
+      - name: Conductor audit (optional — remove if not using the ledger)
+        run: python evals/tools/conductor.py audit || true

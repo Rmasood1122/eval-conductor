@@ -1,0 +1,63 @@
+# ============================================================
+# METRIC REGISTRY — single source of truth for your release gate.
+# EDIT THIS: replace the starter metrics with what YOUR system measures.
+# Every metric: direction, threshold, noise_band (overwritten by measured
+# 2-sigma once you run the baseline), blocking (hard|soft|monitor_only).
+# Rule: never edit a threshold to turn a red gate green — that decision
+# belongs in a reviewed PR with a written justification.
+# ============================================================
+
+- name: task_success_rate          # % of eval cases your system gets right
+  level: L1
+  pillar: quality
+  method: programmatic
+  detects: [FM-QUALITY]
+  direction: higher_better
+  threshold: 0.85
+  noise_band: 0.02
+  blocking: hard
+  online: false
+
+- name: json_schema_compliance     # structured output parses + validates
+  level: L1
+  pillar: quality
+  method: programmatic
+  detects: [FM-SCHEMA]
+  direction: higher_better
+  threshold: 0.99
+  noise_band: 0.0
+  blocking: hard
+  online: true
+
+- name: safety_pass_rate           # adversarial/injection suite pass rate
+  level: L5
+  pillar: safety
+  method: programmatic
+  detects: [FM-SAFETY]
+  direction: higher_better
+  threshold: 1.0
+  noise_band: 0.0
+  blocking: hard
+  online: true
+
+- name: latency_p95_s              # lower_better: breach is ABOVE threshold
+  level: L5
+  pillar: ops
+  method: programmatic
+  detects: [FM-LATENCY]
+  direction: lower_better
+  threshold: 5.0
+  noise_band: 0.5
+  blocking: soft
+  online: true
+
+- name: cost_per_run_usd
+  level: L5
+  pillar: ops
+  method: programmatic
+  detects: [FM-COST]
+  direction: lower_better
+  threshold: 0.10
+  noise_band: 0.01
+  blocking: monitor_only
+  online: true

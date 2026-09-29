@@ -1,0 +1,23 @@
+{
+  "name": "eval-conductor",
+  "displayName": "Eval Conductor",
+  "version": "1.0.0",
+  "description": "Release gates for AI systems that actually block — registry-driven thresholds with measured noise bands, fail-closed on NaN and stale baselines, plus an evidence-gated 27-step build ledger that refuses fake progress.",
+  "author": {
+    "name": "Rehan Masood",
+    "email": "rmasood524@gmail.com",
+    "url": "https://github.com/Rmasood1122"
+  },
+  "homepage": "https://github.com/Rmasood1122/eval-conductor",
+  "repository": "https://github.com/Rmasood1122/eval-conductor",
+  "license": "MIT",
+  "keywords": [
+    "evals",
+    "llm-evaluation",
+    "release-gate",
+    "regression-testing",
+    "ci",
+    "quality",
+    "eval-driven-development"
+  ]
+}
