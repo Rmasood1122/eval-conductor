@@ -1,5 +1,7 @@
 # Eval Conductor
 
+[![CI](https://github.com/Rmasood1122/eval-conductor/actions/workflows/ci.yml/badge.svg)](https://github.com/Rmasood1122/eval-conductor/actions/workflows/ci.yml)
+
 **Release gates for AI systems that actually block — plus an evidence-gated
 build ledger that refuses fake progress.**
 
