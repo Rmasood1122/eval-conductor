@@ -1,6 +1,10 @@
 {
   "name": "eval-conductor-marketplace",
-  "owner": { "name": "Rehan Masood", "url": "https://github.com/Rmasood1122" },
+  "description": "Evaluation discipline for AI systems: fail-closed release gates and an evidence-gated build ledger.",
+  "owner": {
+    "name": "Rehan Masood",
+    "url": "https://github.com/Rmasood1122"
+  },
   "plugins": [
     {
       "name": "eval-conductor",
