@@ -68,6 +68,16 @@ every other metric healthy — plus one fully healthy fixture:
 - exercise the CLI exit codes end-to-end, not just the library function —
   CI consumes the exit code.
 
+## Honest limits (state them, never paper over them)
+
+- `registry_hash` is VERIFIED: the gate recomputes sha256 of the registry
+  file and blocks on mismatch. `dataset_hash` is an ATTESTATION: the gate
+  compares it between candidate and baseline but cannot know your dataset —
+  drift detection, not forgery-proof. Say so in any claims you make.
+- The gate judges the scores it is given; it cannot detect an eval that
+  measures the wrong thing. Judge validation and dataset review are separate
+  work the registry only points at.
+
 ## Wiring
 
 The gate runs in CI on every push including changes to the gate's own code

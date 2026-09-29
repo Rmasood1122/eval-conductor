@@ -36,6 +36,13 @@ the feature.** Never offer to clean, squash, or rewrite it.
 - `audit` runs in CI, release-blocking. A ledger that only the author reads
   is a diary, not a control.
 
+## Honest limit
+
+The ledger verifies evidence SHAPE (a real Actions-run URL), not ownership —
+it cannot prove offline that a URL belongs to this repo's run of this code.
+That last step belongs to the human reviewer reading the linked run. Never
+present shape-validation as authenticity.
+
 ## For Claude specifically
 
 When you complete work tracked by a ledger: run the verification, capture

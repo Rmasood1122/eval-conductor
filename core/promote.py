@@ -30,8 +30,10 @@ runs without it):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import numbers
+import re
 import sys
 from pathlib import Path
 
@@ -40,6 +42,32 @@ from compare import decide            # noqa: E402
 from registry_lint import lint_registry  # noqa: E402
 
 MANIFEST_KEYS = ("registry_hash", "dataset_hash")
+HEX_RE = re.compile(r"[0-9a-f]{8,64}$")
+
+
+def registry_hash_mismatch(raw: object, registry_path: Path) -> str | None:
+    """Verify the candidate's self-reported registry_hash against the ACTUAL
+    registry file. Convention: registry_hash = sha256 of the registry file
+    (full hexdigest or any prefix >= 8 hex chars). Manifest hashes compared
+    only between candidate and baseline are attestations — both can carry the
+    same stale value after the registry is edited, so the gate recomputes
+    what it can. dataset_hash stays an attestation (the gate cannot know
+    your dataset)."""
+    cand_manifest = raw.get("manifest") if isinstance(raw, dict) else None
+    if not isinstance(cand_manifest, dict):
+        return None
+    claimed = cand_manifest.get("registry_hash")
+    if not isinstance(claimed, str) or not claimed:
+        return None
+    if not HEX_RE.fullmatch(claimed.lower()):
+        return (f"registry_hash {claimed!r} is not a sha256 hex (prefix) of the "
+                f"registry file — use sha256 of {registry_path} (>=8 hex chars)")
+    actual = hashlib.sha256(registry_path.read_bytes()).hexdigest()
+    if not actual.startswith(claimed.lower()):
+        return (f"registry_hash mismatch: candidate attests {claimed!r} but "
+                f"{registry_path} on disk hashes to {actual[:12]}… — the "
+                f"registry changed after this candidate/baseline was produced")
+    return None
 
 
 def load_registry(path: Path) -> list[dict]:
@@ -113,6 +141,12 @@ def main(argv: list[str] | None = None) -> int:
     if stale:
         print(f"\nDECISION: BLOCK — {stale}", file=sys.stderr)
         return 1
+    rp = Path(args.registry)
+    if rp.exists():
+        tampered = registry_hash_mismatch(raw, rp)
+        if tampered:
+            print(f"\nDECISION: BLOCK — {tampered}", file=sys.stderr)
+            return 1
 
     try:
         registry = load_registry(Path(args.registry))

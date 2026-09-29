@@ -2,8 +2,8 @@
   "manifest": {
     "prompt_version": "answerer/v1",
     "model_config": {"model": "your-model", "temperature": 0.0},
-    "dataset_hash": "REPLACE-hash-of-your-eval-dataset",
-    "registry_hash": "REPLACE-hash-of-evals/registry.yaml"
+    "dataset_hash": "REPLACE-sha256-of-your-eval-dataset (attestation: compared to baseline, not verifiable by the gate)",
+    "registry_hash": "REPLACE-sha256-of-evals/registry.yaml (VERIFIED: gate recomputes from the file; any prefix >=8 hex chars)"
   },
   "scores": {
     "task_success_rate": 0.91,

@@ -152,3 +152,32 @@ def test_conductor_init_and_evidence_gate(tmp_path):
     r = run([str(c), "check", "--evidence",
              "https://github.com/x/y/actions/runs/<PASTE-REAL-RUN-ID>"], tmp_path)
     assert r.returncode != 0
+
+
+def test_registry_tamper_after_baseline_blocks(repo):
+    """Attack: edit the registry (gut a threshold) after candidate/baseline
+    were produced, keeping the old attested hash. Gate must recompute."""
+    import hashlib
+    reg = repo / "evals/registry.yaml"
+    old_hash = hashlib.sha256(reg.read_bytes()).hexdigest()[:12]
+    write_candidate(repo, HEALTHY,
+                    manifest={"registry_hash": old_hash, "dataset_hash": "d1"})
+    assert gate(repo).returncode == 0  # honest state passes
+    reg.write_text(reg.read_text().replace("threshold: 0.85", "threshold: 0.10"))
+    r = gate(repo)  # same candidate, stale attested hash
+    assert r.returncode == 1 and "registry_hash mismatch" in r.stderr
+
+
+def test_non_hex_registry_hash_blocks(repo):
+    write_candidate(repo, HEALTHY,
+                    manifest={"registry_hash": "REPLACE-me", "dataset_hash": "d1"})
+    r = gate(repo)
+    assert r.returncode == 1 and "not a sha256 hex" in r.stderr
+
+
+def test_baseline_rejects_non_numeric_scores(repo):
+    runs = repo / "evals/runs"; runs.mkdir()
+    (runs / "r0.json").write_text(json.dumps({"scores": {**HEALTHY, "task_success_rate": "0.9"}}))
+    (runs / "r1.json").write_text(json.dumps({"scores": HEALTHY}))
+    r = run([str(repo / "evals/tools/baseline.py"), "--from", "evals/runs/*.json"], repo)
+    assert r.returncode != 0 and "non-numeric" in (r.stdout + r.stderr)

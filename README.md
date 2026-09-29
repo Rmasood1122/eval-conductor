@@ -31,8 +31,11 @@ because a real gate was seen passing bad runs without it.
   monitor-only metrics, because the instrument itself is broken.
 - **Missing metric → BLOCK.** Deleting a metric must never be the easy way
   to pass.
-- **Stale baseline → BLOCK.** Candidate and baseline carry dataset/registry
-  hashes; a mismatch blocks before any metric is judged.
+- **Stale baseline / tampered registry → BLOCK.** Candidate and baseline
+  carry dataset/registry hashes; a mismatch blocks before any metric is
+  judged — and `registry_hash` is recomputed from the file on disk, so
+  editing the registry after the baseline cannot ride a stale attestation.
+  (`dataset_hash` remains an attestation: drift detection, not forgery-proof.)
 - **Registry typo → refuse to run.** `lower_beter` cannot silently disable
   a gate: the registry is schema-linted (enums, required keys, no unknown
   keys) on every load.

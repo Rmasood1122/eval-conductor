@@ -53,8 +53,13 @@ def scores_of(raw: dict, source: str) -> dict:
     s = raw.get("scores") if isinstance(raw.get("scores"), dict) else raw
     if not isinstance(s, dict) or not s:
         raise SystemExit(f"FAIL: {source}: no scores found")
-    return {k: float(v) for k, v in s.items()
-            if isinstance(v, (int, float)) and not isinstance(v, bool)}
+    out = {}
+    for k, v in s.items():
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            raise SystemExit(f"FAIL: {source}: score {k}={v!r} is non-numeric — "
+                             f"a broken emitter must not shape the baseline")
+        out[k] = float(v)
+    return out
 
 
 def build_baseline(runs: list[dict]) -> dict:
