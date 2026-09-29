@@ -1,7 +1,6 @@
 ---
 description: Build or refresh the eval baseline — run the eval N times and compute mean + 2-sigma noise bands per metric
 argument-hint: "--cmd \"<eval command>\" [--runs 3] | --from \"evals/runs/*.json\""
-allowed-tools: ["Bash", "Read", "Glob"]
 ---
 
 Build the baseline the gate compares against:

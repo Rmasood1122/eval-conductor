@@ -1,7 +1,6 @@
 ---
 description: Run the eval release gate — candidate vs baseline under the registry, PROMOTE or BLOCK with a per-metric verdict table
 argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
-allowed-tools: ["Bash", "Read", "Glob"]
 ---
 
 Run the release gate in the user's repository:

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect x="8" y="8" width="112" height="112" rx="24" fill="#1a2b3c"/>
+  <!-- gate posts -->
+  <rect x="30" y="30" width="10" height="68" rx="3" fill="#e8eef4"/>
+  <rect x="88" y="30" width="10" height="68" rx="3" fill="#e8eef4"/>
+  <!-- gate bar: raised = PROMOTE -->
+  <rect x="34" y="38" width="60" height="10" rx="5" fill="#4cc38a"/>
+  <!-- block bar: the gate that can say no -->
+  <rect x="34" y="80" width="60" height="10" rx="5" fill="#e5484d" opacity="0.9"/>
+  <!-- checkmark between: evidence -->
+  <path d="M52 62 l8 8 l16 -16" stroke="#e8eef4" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

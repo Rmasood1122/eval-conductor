@@ -1,7 +1,6 @@
 ---
 description: Install a fail-closed eval release gate (registry, gate CLI, baseline runner, CI workflow) into the current repository
 argument-hint: "[--force] [--conductor --project NAME --archetype A1..A5]"
-allowed-tools: ["Bash", "Read", "Edit", "Write", "Glob", "Grep"]
 ---
 
 Install the eval gate into the user's current repository.

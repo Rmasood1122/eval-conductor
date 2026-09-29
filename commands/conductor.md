@@ -1,7 +1,6 @@
 ---
 description: Evidence-gated 27-step build ledger — init, status, check off steps with CI evidence, audit; refuses placeholder proof and step-skipping
 argument-hint: "init --project NAME --archetype A1..A5 | status | next | guide | check --evidence URL | defer N --trigger ... | na N --justify ... | reopen N | audit"
-allowed-tools: ["Bash", "Read", "Glob"]
 ---
 
 Operate the conductor — the 27-step eval build method as an enforcing CLI.

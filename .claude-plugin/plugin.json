@@ -1,8 +1,8 @@
 {
   "name": "eval-conductor",
   "displayName": "Eval Conductor",
-  "version": "1.0.0",
-  "description": "Release gates for AI systems that actually block — registry-driven thresholds with measured noise bands, fail-closed on NaN and stale baselines, plus an evidence-gated 27-step build ledger that refuses fake progress.",
+  "version": "1.0.1",
+  "description": "Release gates for AI systems that actually block \u2014 registry-driven thresholds with measured noise bands, fail-closed on NaN and stale baselines, plus an evidence-gated 27-step build ledger that refuses fake progress.",
   "author": {
     "name": "Rehan Masood",
     "email": "rmasood524@gmail.com",
@@ -19,5 +19,6 @@
     "ci",
     "quality",
     "eval-driven-development"
-  ]
+  ],
+  "icon": "./.claude-plugin/icon.svg"
 }
