@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# self-eval artifacts (regenerated every CI run; never committed)
+evals/candidate.json
+evals/baseline.json

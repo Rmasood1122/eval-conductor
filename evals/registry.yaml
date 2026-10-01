@@ -1,0 +1,47 @@
+# ============================================================
+# eval-conductor's OWN release gate — the tool run on itself.
+#
+# This repo is a deterministic Python tool, not an LLM system, so these are
+# NOT faked model-quality metrics. They gate the repo on its OWN doctrine:
+# every test passes, no test is silently removed, and the fail-closed
+# protection tests are not quietly deleted. Measured by evals/run_self_eval.py
+# on every CI run; gated by core/promote.py; guarded against unjustified
+# weakening by core/registry_diff_lint.py.
+#
+# Thresholds are the counts measured at the time this file was committed. To
+# change one you must also write a reason in evals/registry_changes.yaml —
+# the diff lint enforces that. Never edit a threshold to turn a red gate green.
+# ============================================================
+
+- name: self_test_pass_rate        # fraction of the suite that passes (JUnit XML)
+  level: L1
+  pillar: quality
+  method: programmatic
+  detects: [FM-REGRESSION]
+  direction: higher_better
+  threshold: 1.0
+  noise_band: 0.0
+  blocking: hard
+  online: false
+
+- name: test_count                 # total collected tests — a floor, so no test
+  level: L1                        # can be silently deleted to dodge a failure
+  pillar: safety
+  method: programmatic
+  detects: [FM-TEST-REMOVED]
+  direction: higher_better
+  threshold: 67
+  noise_band: 0.0
+  blocking: hard
+  online: false
+
+- name: fail_closed_tests_covered  # tests asserting a BLOCK/REFUSED/non-zero-exit
+  level: L5                        # outcome — deleting protection drops this
+  pillar: safety
+  method: programmatic
+  detects: [FM-THEATER]
+  direction: higher_better
+  threshold: 18
+  noise_band: 0.0
+  blocking: hard
+  online: false
