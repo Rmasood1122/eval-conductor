@@ -7,15 +7,38 @@ build ledger that refuses fake progress.**
 
 Most eval setups are theater: gates that have never been seen to fire,
 thresholds quietly edited until CI goes green, "done" steps with no proof
-behind them. This plugin installs the opposite into any repository, in one
-command, with no API keys and no infrastructure — Python 3.10+ and PyYAML
-are the only requirements.
+behind them. This plugin installs the opposite into any repository: install
+it once, run `/eval-init`, and the gate lives in your repo — no API keys, no
+infrastructure. Python 3.10+ and PyYAML are the only requirements.
 
 It was extracted from a working system that was pointed at itself during its
 own build — and caught its own author closing steps on placeholder evidence
 (three times, preserved in the committed ledger) and found that `NaN` scores
 passed every threshold check silently. Every rule in this plugin exists
 because a real gate was seen passing bad runs without it.
+
+## Install
+
+Requires [Claude Code](https://claude.com/claude-code), Python 3.10+, and
+PyYAML (`pip install pyyaml`). No API keys, no infrastructure.
+
+In Claude Code:
+
+```
+/plugin marketplace add Rmasood1122/eval-conductor
+/plugin install eval-conductor@eval-conductor-marketplace
+```
+
+Or from your shell, no session needed (same result):
+
+```bash
+claude plugin marketplace add Rmasood1122/eval-conductor
+claude plugin install eval-conductor@eval-conductor-marketplace
+```
+
+**Confirm it took:** `/plugin list` shows `eval-conductor`, and `/eval-init`
+is recognized as a command. If a slash command isn't recognized, start a
+fresh Claude Code session — plugins load at startup.
 
 ## Commands
 
@@ -52,15 +75,17 @@ because a real gate was seen passing bad runs without it.
   happen, honest reversals, and the fake-evidence patterns to watch for in
   your own work.
 
-## Quickstart
+## First run
+
+Open Claude Code **inside the repository you want to gate**, then:
 
 ```
-/eval-init
+/eval-init                                  # scaffolds evals/: registry, gate CLI, baseline runner, CI workflow
 # edit evals/registry.yaml to YOUR metrics
 # make your eval run write evals/candidate.json
-/eval-gate                       # first run, threshold-only
-/eval-baseline --cmd "make eval" --runs 3
-/eval-gate                       # now with measured regression bands
+/eval-gate                                  # first run, threshold-only
+/eval-baseline --cmd "make eval" --runs 3   # measured mean + 2σ noise bands
+/eval-gate                                  # now with regression bands
 ```
 
 The scaffolded gate is plain Python committed into *your* repo
