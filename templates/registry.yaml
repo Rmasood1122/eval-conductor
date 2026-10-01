@@ -1,8 +1,12 @@
 # ============================================================
 # METRIC REGISTRY — single source of truth for your release gate.
 # EDIT THIS: replace the starter metrics with what YOUR system measures.
-# Every metric: direction, threshold, noise_band (overwritten by measured
-# 2-sigma once you run the baseline), blocking (hard|soft|monitor_only).
+# Every metric: direction, threshold, noise_band (floor; the gate uses the
+# LARGER of this and the measured band from the baseline), blocking
+# (hard|soft|monitor_only).
+# Optional band_method: sigma (default, mean ± 2σ) or mad (median ± 2·1.4826·MAD).
+#   Use mad for pass-rates and anything bounded near 0 or 1 — the Gaussian band
+#   is the wrong shape there and one outlier run can blow it up.
 # Rule: never edit a threshold to turn a red gate green — that decision
 # belongs in a reviewed PR with a written justification.
 # ============================================================
@@ -15,6 +19,7 @@
   direction: higher_better
   threshold: 0.85
   noise_band: 0.02
+  band_method: mad                 # pass-rate: robust band
   blocking: hard
   online: false
 

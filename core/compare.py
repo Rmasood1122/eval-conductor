@@ -6,7 +6,10 @@ Pure functions so tests/test_l0_gate.py can verify every branch. Rules:
   - soft metric breach/regression                        -> WARN (human review)
   - monitor_only                                         -> report only
   - NaN / non-finite / non-numeric score                 -> BLOCK, always (IE-07)
-Band used = max(registry noise_band, measured 2σ from baseline).
+Band used = max(registry noise_band, measured band from baseline), where the
+measured band is band_2sigma (default) or band_mad when the registry row says
+`band_method: mad` (F-E2: robust for bounded/pass-rate metrics; centre is the
+median instead of the mean — Verdict.baseline_mean then holds the median).
 
 Fail-closed rationale (IE-07, FM-02/FM-05): NaN compares False against every
 threshold, so before this rule a NaN score sailed through both the breach and
@@ -46,8 +49,20 @@ def judge_metric(spec: dict, candidate: float, base: dict | None) -> Verdict:
                        f"non-finite score ({candidate}) — invalid measurement, fail closed")
     base_mean = None
     if base is not None:
-        base_mean = float(base["mean"])
-        band = max(band, float(base.get("band_2sigma", 0.0)))
+        method = spec.get("band_method", "sigma")
+        if method == "mad":
+            # F-E2 robust path: centre on the median, band from MAD. A baseline
+            # written before band_mad existed has no robust fields -> fall
+            # back to the sigma pair rather than silently gating on zero.
+            if "median" in base and "band_mad" in base:
+                base_mean = float(base["median"])
+                band = max(band, float(base["band_mad"]))
+            else:
+                base_mean = float(base["mean"])
+                band = max(band, float(base.get("band_2sigma", 0.0)))
+        else:
+            base_mean = float(base["mean"])
+            band = max(band, float(base.get("band_2sigma", 0.0)))
 
     higher = direction == "higher_better"
     breach = candidate < threshold if higher else candidate > threshold
