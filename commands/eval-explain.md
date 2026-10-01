@@ -1,5 +1,5 @@
 ---
-description: Explain a gate decision in plain English — which metric failed, how far past the line, breach vs regression, the one legitimate fix, and the moves that are theater
+description: Explain a gate decision in plain English — which metric, breach vs regression, how far past the line, the legitimate fix, and the theater moves named
 argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
 ---
 
