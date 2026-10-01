@@ -15,6 +15,8 @@ Usage (from the target project's repo root):
   python conductor.py init --project NAME --archetype A3 [--state PATH]
   python conductor.py status | guide | next | audit
   python conductor.py check --evidence "https://github.com/..../actions/runs/123"
+  python conductor.py check --evidence "<run url>" --verify-evidence   # F-E4: real,
+                                        # same repo, green — via GitHub API (network)
   python conductor.py defer STEP --trigger "fires when ..."
   python conductor.py na STEP --justify "architecture reason ..."
   python conductor.py apply STEP        # re-activate a deferred/na row
@@ -53,6 +55,71 @@ ARCHETYPES: dict[str, dict[str, Any]] = {
 }
 
 NEVER_NA_MSG = "REFUSED (doctrine): T05/T27 can never be N/A — an ungoverned instrument and an unaudited eval system are how eval theater survives."
+
+# ---------------- F-E4: optional real verification of CI evidence ----------------
+# Default `check` only tests that CI evidence is SHAPED like an Actions run URL.
+# That keeps the conductor offline, but a fabricated-yet-well-formed URL closes
+# a step. `check --verify-evidence` trades offline for truth: the run must exist
+# (GitHub API), belong to the repo you are standing in, and have concluded
+# `success`. Off by default so the offline promise holds; turn it on in CI,
+# where the network is there anyway. Honest limit: this proves the run is real
+# and green, not that it is the RIGHT run for this step — that is still review.
+
+RUN_URL_RE = re.compile(r"https://github\.com/([^/\s]+)/([^/\s]+)/actions/runs/(\d+)")
+
+
+def repo_slug_from_git() -> str | None:
+    """'owner/repo' from `git remote get-url origin`, or None outside a repo."""
+    import subprocess
+    try:
+        url = subprocess.run(["git", "remote", "get-url", "origin"],
+                             capture_output=True, text=True, check=True).stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    m = re.search(r"github\.com[:/]([^/\s]+)/([^/\s]+?)(?:\.git)?/?$", url)
+    return f"{m.group(1)}/{m.group(2)}".lower() if m else None
+
+
+def fetch_json(url: str) -> dict | None:
+    """GET url -> parsed JSON, or None on any failure. Uses GITHUB_TOKEN if set
+    (private repos / rate limits); anonymous works for public repos."""
+    import json as _json
+    import os
+    import urllib.request
+    import urllib.error
+    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json",
+                                               "User-Agent": "eval-conductor"})
+    tok = os.environ.get("GITHUB_TOKEN")
+    if tok:
+        req.add_header("Authorization", f"Bearer {tok}")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return _json.loads(r.read().decode("utf-8"))
+    except (urllib.error.URLError, urllib.error.HTTPError, ValueError, OSError):
+        return None
+
+
+def verify_ci_run(evidence: str, expected_slug: str | None, fetch=fetch_json) -> str | None:
+    """Return a problem string, or None if the run is real, ours, and green.
+    `fetch` is injectable so tests never touch the network."""
+    m = RUN_URL_RE.search(evidence)
+    if not m:
+        return "evidence is not an Actions run URL"
+    owner, repo, run_id = m.group(1), m.group(2), m.group(3)
+    url_slug = f"{owner}/{repo}".lower()
+    if expected_slug and url_slug != expected_slug:
+        return (f"run URL is for {url_slug} but this repo is {expected_slug} — "
+                f"evidence must come from the repo being gated")
+    data = fetch(f"https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}")
+    if not data or "id" not in data:
+        return f"run {run_id} not found at {url_slug} (or API unreachable) — fail closed"
+    if str(data.get("id")) != run_id:
+        return f"API returned run {data.get('id')} for requested {run_id}"
+    if data.get("status") != "completed":
+        return f"run {run_id} is {data.get('status')!r}, not completed"
+    if data.get("conclusion") != "success":
+        return f"run {run_id} concluded {data.get('conclusion')!r}, not success"
+    return None
 
 
 def load_steps() -> list[dict[str, Any]]:
@@ -173,8 +240,15 @@ def cmd_check(args: argparse.Namespace) -> int:
         sys.exit("REFUSED (D2): evidence is suspiciously long — looks like pasted command text, not an artifact reference.")
     kind = corpus_by_step(load_steps())[cur["step"]]["evidence_kind"]
     if kind == "ci" and not re.search(r"https://github\.com/\S+/actions/runs/\d+", ev):
-        sys.exit(f"REFUSED (D2): step {cur['step']} closes only on a real Actions run URL "
+        sys.exit(f"REFUSED (D2): step {cur['step']} closes only on an Actions run URL "
                  "(https://github.com/<owner>/<repo>/actions/runs/<id>).")
+    if kind == "ci" and getattr(args, "verify_evidence", False):
+        # F-E4: the regex above checks SHAPE only. With --verify-evidence the
+        # run must actually exist, belong to THIS repo, and have succeeded.
+        problem = verify_ci_run(ev, repo_slug_from_git())
+        if problem:
+            sys.exit(f"REFUSED (D2 verified): {problem}")
+        print(f"evidence verified: run exists in this repo and concluded success")
     # D1: no post-week-one step closes while a week-one applied step is open
     w1 = week_one_set(state)
     if cur["step"] not in w1:
@@ -309,6 +383,10 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_parser(name).set_defaults(fn=fn)
     sp = sub.add_parser("check"); sp.add_argument("--evidence", required=False)
     sp.add_argument("--note"); sp.add_argument("--step", type=int, default=None)
+    sp.add_argument("--verify-evidence", action="store_true",
+                    help="for ci-kind steps: confirm the run exists in THIS repo "
+                         "and concluded success via the GitHub API (needs network; "
+                         "GITHUB_TOKEN honoured)")
     sp.set_defaults(fn=cmd_check)
     sp = sub.add_parser("defer"); sp.add_argument("step_n", type=int)
     sp.add_argument("--trigger"); sp.set_defaults(fn=cmd_defer)
