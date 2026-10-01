@@ -8,12 +8,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # diff lint compares the gate against its past self
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install pyyaml
       - name: Registry schema lint (hard block)
         run: python evals/tools/registry_lint.py evals/registry.yaml
+      - name: Registry diff lint — no unjustified gate weakening (hard block)
+        # Compares evals/registry.yaml against its version on the base branch.
+        # A loosened threshold, flipped direction, downgraded blocking tier,
+        # widened band, or removed metric must carry a reason in
+        # evals/registry_changes.yaml or this fails. The mechanical form of
+        # "never edit a threshold to turn a red gate green".
+        run: |
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            git fetch -q origin "$GITHUB_BASE_REF"
+            python evals/tools/registry_diff_lint.py --base "origin/$GITHUB_BASE_REF"
+          else
+            python evals/tools/registry_diff_lint.py
+          fi
       - name: Produce candidate
         # EDIT: replace with your eval command — it must write evals/candidate.json
         run: echo "REPLACE ME — run your evals here" && test -f evals/candidate.json

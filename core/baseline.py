@@ -16,6 +16,17 @@ Output (default evals/baseline.json):
 The gate uses max(registry noise_band, band_2sigma) as the regression band,
 so a noisy metric earns a wide band from DATA, not from someone's guess.
 Refuses to write a baseline from fewer than 2 runs unless --allow-single.
+
+HONESTY ABOUT N (read this before trusting a band):
+  A 2-sigma band is only as good as the sigma it is measured from, and at
+  small N that sigma is itself extremely noisy. At N=3 the estimate has 2
+  degrees of freedom — the band can swing roughly +/-50-60% run to run, so a
+  3-run band is closer to an educated guess than a measurement. Worse, a few
+  runs can land identical BY LUCK (common for pass-rate metrics near 1.0),
+  giving sigma=0 and a ZERO band: after that, any later dip at all — even one
+  flaky case — BLOCKs. This runner now warns on both conditions (low N, and
+  any zero band at N>=2). Treat >=10-20 runs as the floor for a band you lean
+  on; N=3 is a smoke test, not a calibration.
 """
 from __future__ import annotations
 
@@ -27,6 +38,41 @@ import statistics
 import subprocess
 import sys
 from pathlib import Path
+
+# A band you lean on needs a sigma measured from enough runs. Below this the
+# 2-sigma estimate is too noisy to be called a measurement — we still write
+# it, but we say so loudly. See the module docstring on N.
+RECOMMENDED_RUNS = 10
+
+
+def band_warnings(baseline: dict) -> list[str]:
+    """Non-fatal warnings about how trustworthy the measured bands are.
+
+    Two conditions, both silent failure modes the gate would otherwise
+    inherit without anyone noticing:
+      - too few runs: the sigma behind every band is high-variance at low N.
+      - a zero band at N>=2: runs landed identical (often by luck near a
+        metric's ceiling), so the regression check now has NO slack and will
+        BLOCK on the first bit of real noise.
+    """
+    warns: list[str] = []
+    n = baseline.get("n_runs", 0)
+    if n < RECOMMENDED_RUNS:
+        warns.append(
+            f"only {n} run(s): a 2-sigma band from {n} runs is a high-variance "
+            f"estimate, not a measurement — it can swing ~50% run to run. Use "
+            f">={RECOMMENDED_RUNS} runs for a band you gate on; treat this one "
+            f"as a smoke test.")
+    zero = [name for name, m in baseline.get("metrics", {}).items()
+            if n >= 2 and float(m.get("band_2sigma", 0.0)) == 0.0]
+    if zero:
+        warns.append(
+            f"zero-width band(s) for {zero}: every run scored identically, so "
+            f"the measured band is 0.00 and the gate has NO slack for these — "
+            f"the next run that dips by one case will BLOCK. This usually means "
+            f"too few runs or a metric pinned at its ceiling, not real "
+            f"zero-noise. Add runs, or set a deliberate registry noise_band.")
+    return warns
 
 
 def collect_from_cmd(cmd: str, runs: int, candidate: Path) -> list[dict]:
@@ -108,6 +154,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"baseline written -> {out}  (runs: {baseline['n_runs']})")
     for k, v in baseline["metrics"].items():
         print(f"  {k}: mean {v['mean']:.4f}  band_2sigma {v['band_2sigma']:.4f}")
+    warns = band_warnings(baseline)
+    for w in warns:
+        print(f"WARNING: {w}", file=sys.stderr)
+    if warns:
+        print("WARNING: bands above are not yet calibration-grade — see the "
+              "notes before gating on them.", file=sys.stderr)
     return 0
 
 
