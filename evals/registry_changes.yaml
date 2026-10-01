@@ -1,0 +1,32 @@
+# ============================================================
+# REGISTRY CHANGE JUSTIFICATIONS — the paper trail for weakening a gate.
+#
+# The diff lint (registry_diff_lint.py) blocks any edit to registry.yaml that
+# makes a gate EASIER to pass — a lowered threshold, a flipped direction, a
+# blocking tier moved down, a widened noise_band, or a deleted metric —
+# UNLESS there is a real reason recorded here, keyed by metric name.
+#
+# Tightening a gate (raising the bar, hard-ening a tier, narrowing a band,
+# adding a metric) needs nothing here — only weakening does.
+#
+# A justification must be a real sentence tied to THIS change: what moved,
+# why it is still a valid bar, and where to verify (PR, issue, dataset note).
+# Placeholders (TODO, TBD, "...", n/a, empty) are rejected. One entry per
+# metric covers every weakening change to that metric in the same diff.
+#
+# Rule this enforces: never edit a threshold to turn a red gate green. If the
+# change is legitimate, it survives being written down and reviewed. If you
+# can't write an honest reason, you don't have one.
+# ============================================================
+
+# Examples (delete these; they reference metrics that don't exist):
+#
+# task_success_rate: >
+#   Threshold 0.92 -> 0.90 after dataset v3 added 40 harder adversarial
+#   cases on 2026-09-28; the old 0.92 on the easier set and 0.90 on the
+#   harder set are an equivalent bar. Reviewed in PR #123.
+#
+# latency_p95_s: >
+#   noise_band 0.5 -> 0.8s: measured 2-sigma over 20 baseline runs on the
+#   new CI runners is 0.78s; the old 0.5 was a guess from 3 runs. See the
+#   baseline run at <actions URL>.

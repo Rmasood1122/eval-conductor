@@ -5,9 +5,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # diff lint compares the self-gate registry vs its past self
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install pyyaml pytest
       - name: Full suite incl. plugin self-validation (release-blocking)
         run: python -m pytest tests/ -q
+      # --- eval-conductor gating itself (dogfood) ---
+      - name: Self-gate · registry schema lint
+        run: python core/registry_lint.py evals/registry.yaml
+      - name: Self-gate · registry diff lint (no unjustified gate weakening)
+        run: |
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            git fetch -q origin "$GITHUB_BASE_REF"
+            python core/registry_diff_lint.py --registry evals/registry.yaml --base "origin/$GITHUB_BASE_REF"
+          else
+            python core/registry_diff_lint.py --registry evals/registry.yaml
+          fi
+      - name: Self-gate · run self-eval -> candidate
+        run: python evals/run_self_eval.py
+      - name: Self-gate · promote (tests pass, no test removed, protection intact)
+        run: python core/promote.py --registry evals/registry.yaml --candidate evals/candidate.json --baseline evals/baseline.json
