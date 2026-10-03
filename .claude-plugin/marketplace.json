@@ -1,6 +1,6 @@
 {
   "name": "eval-conductor-marketplace",
-  "description": "Evaluation discipline for AI systems: fail-closed release gates and an evidence-gated build ledger.",
+  "description": "Fail-closed release gates for AI evals — gate claude plugin eval, pytest, promptfoo or any scores; plus an evidence-gated build ledger.",
   "owner": {
     "name": "Rehan Masood",
     "url": "https://github.com/Rmasood1122"
@@ -9,7 +9,7 @@
     {
       "name": "eval-conductor",
       "source": "./",
-      "description": "Fail-closed eval release gates + evidence-gated build ledger. /eval-init installs gates into any repo."
+      "description": "Stop AI evals quietly regressing: fail-closed release gate for scores you already produce (claude plugin eval, pytest, promptfoo) + evidence-gated build ledger. /eval-init gates real numbers on the first push."
     }
   ]
 }

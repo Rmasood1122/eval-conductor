@@ -1,0 +1,58 @@
+# ============================================================
+# METRIC REGISTRY — claude plugin eval profile, for Claude Code plugin authors.
+#
+# `claude plugin eval .` scores your plugin today. This registry stops that
+# score from quietly getting worse: the adapter
+# (evals/tools/adapters.py plugin-eval evals/results/) reads the latest
+# aggregate-result.json and the gate judges it against thresholds AND the
+# baseline's noise bands. A partial run (cost ceiling / auth failure) is
+# refused, never scored.
+#
+# plugin_eval_mean_delta is the row that matters: a case that scores 1.0
+# with and without the plugin was not passed BECAUSE of the plugin.
+# Rule: never edit a threshold to turn a red gate green.
+# ============================================================
+
+- name: plugin_eval_score              # aggregates.overallScore, 0..1
+  level: L1
+  pillar: quality
+  method: llm_judge
+  detects: [FM-PLUGIN-REGRESSION]
+  direction: higher_better
+  threshold: 0.8
+  noise_band: 0.05
+  blocking: hard
+  online: false
+
+- name: plugin_eval_mean_delta         # with-plugin minus without; must stay positive
+  level: L1
+  pillar: quality
+  method: llm_judge
+  detects: [FM-PLUGIN-NO-LIFT]
+  direction: higher_better
+  threshold: 0.1
+  noise_band: 0.05
+  blocking: hard
+  online: false
+
+- name: plugin_eval_min_case_score     # the weakest case, so an aggregate can't hide it
+  level: L1
+  pillar: quality
+  method: llm_judge
+  detects: [FM-PLUGIN-REGRESSION]
+  direction: higher_better
+  threshold: 0.5
+  noise_band: 0.1
+  blocking: soft
+  online: false
+
+- name: plugin_eval_cases_total        # floor: a case can't be silently deleted
+  level: L1
+  pillar: safety
+  method: programmatic
+  detects: [FM-TEST-REMOVED]
+  direction: higher_better
+  threshold: 1
+  noise_band: 0.0
+  blocking: hard
+  online: false

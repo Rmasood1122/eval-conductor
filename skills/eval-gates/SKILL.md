@@ -1,6 +1,6 @@
 ---
 name: eval-gates
-description: Design and harden fail-closed release gates for AI/LLM systems — metric registries, noise-band regression detection, BLOCK fixtures, and the failure modes naive gates miss (NaN pass-through, stale baselines, threshold editing)
+description: Use whenever an eval/release gate, threshold, baseline, noise band, or metric registry is being designed, reviewed, or debugged — and ALWAYS when a gate is red and someone wants to raise/lower a threshold, widen a band, downgrade a metric, refresh the baseline, or otherwise make CI pass; also when a score is NaN/missing or a check "passed" suspiciously. Covers fail-closed gate design, BLOCK fixtures, and the failure modes naive gates miss.
 ---
 
 # Fail-closed eval gates

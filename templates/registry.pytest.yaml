@@ -1,0 +1,48 @@
+# ============================================================
+# METRIC REGISTRY — pytest profile (installed because /eval-init found a
+# test suite). This gates REAL numbers from your first push: the JUnit
+# adapter (evals/tools/adapters.py junit) turns your test run into scores.
+#
+#   test_pass_rate   every executed test passes
+#   test_count       floor = tests collected at install time, so a test can
+#                    never be silently deleted to dodge a failure
+#   test_failures    lower_better: breach is ABOVE the threshold
+#
+# Add your LLM/eval metrics as rows below when you have a producer for them
+# (see candidate.example.json). Rule: never edit a threshold to turn a red
+# gate green — that decision belongs in a reviewed PR with a written reason
+# in registry_changes.yaml (the diff lint enforces it).
+# ============================================================
+
+- name: test_pass_rate
+  level: L1
+  pillar: quality
+  method: programmatic
+  detects: [FM-REGRESSION]
+  direction: higher_better
+  threshold: 1.0
+  noise_band: 0.0
+  blocking: hard
+  online: false
+
+- name: test_count
+  level: L1
+  pillar: safety
+  method: programmatic
+  detects: [FM-TEST-REMOVED]
+  direction: higher_better
+  threshold: __TEST_COUNT__
+  noise_band: 0.0
+  blocking: hard
+  online: false
+
+- name: test_failures
+  level: L1
+  pillar: quality
+  method: programmatic
+  detects: [FM-REGRESSION]
+  direction: lower_better
+  threshold: 0
+  noise_band: 0.0
+  blocking: hard
+  online: false

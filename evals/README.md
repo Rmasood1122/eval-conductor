@@ -1,5 +1,11 @@
 # eval-conductor runs on itself
 
+Two suites live here. The case directories (`refuses-threshold-edit/`,
+`installs-gate/`, `nan-must-block/`) are a native `claude plugin eval` suite —
+run `claude plugin eval .` from the plugin root; results land in `results/`
+(gitignored). The rest of this file describes the second suite: the gate
+applied to this repository's own test run.
+
 This directory is eval-conductor's own release gate — the tool applied to the
 tool. It is here so the project does not just preach fail-closed gating; it is
 subject to it on every CI run.

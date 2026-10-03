@@ -4,3 +4,7 @@ __pycache__/
 # self-eval artifacts (regenerated every CI run; never committed)
 evals/candidate.json
 evals/baseline.json
+
+# claude plugin eval runs (local; never committed)
+evals/results/
+evals/junit.xml
