@@ -38,7 +38,7 @@ def frontmatter(path: Path) -> dict:
 
 def test_commands_frontmatter():
     cmds = sorted((ROOT / "commands").glob("*.md"))
-    assert {c.stem for c in cmds} == {"eval-init", "eval-gate", "eval-baseline", "conductor"}
+    assert {c.stem for c in cmds} == {"eval-init", "eval-gate", "eval-baseline", "eval-import", "conductor"}
     for c in cmds:
         data = frontmatter(c)
         assert data.get("description"), c
@@ -55,8 +55,8 @@ def test_skills_frontmatter():
 
 def test_core_files_present_and_stdlib_plus_yaml_only():
     core = {p.name for p in (ROOT / "core").iterdir()}
-    assert {"promote.py", "compare.py", "registry_lint.py", "baseline.py",
-            "conductor.py", "steps.yaml"} <= core
+    assert {"promote.py", "compare.py", "adapters.py", "registry_lint.py",
+            "baseline.py", "conductor.py", "steps.yaml"} <= core
     banned = re.compile(r"^\s*(import|from)\s+(requests|numpy|pandas|pydantic|httpx)\b", re.M)
     for p in (ROOT / "core").glob("*.py"):
         assert not banned.search(p.read_text()), p
@@ -76,3 +76,35 @@ def test_no_personal_or_client_strings():
         if p.is_file() and p.suffix in {".py", ".md", ".yaml", ".yml", ".json"} \
                 and ".git" not in p.parts and p.name != "test_plugin_structure.py":
             assert not banned.search(p.read_text(errors="ignore")), p
+
+
+def test_native_plugin_eval_suite_is_well_formed():
+    """evals/<case>/prompt.md + graders/*.md in the `claude plugin eval` layout.
+    An eval plugin that cannot be evaluated natively has no business gating anyone."""
+    cases = [p for p in (ROOT / "evals").iterdir()
+             if p.is_dir() and (p / "prompt.md").exists()]
+    assert len(cases) >= 3, "expected at least 3 native eval cases"
+    grader_types = {"regex", "tool_used", "tool_order", "file_exists", "llm", "baseline"}
+    for case in cases:
+        fm = frontmatter(case / "prompt.md")
+        body = (case / "prompt.md").read_text().split("---\n", 2)[2].strip()
+        assert body, case
+        assert isinstance(fm.get("allowed_tools"), list), case
+        graders = list((case / "graders").glob("*.md"))
+        assert graders, case
+        for g in graders:
+            gfm = frontmatter(g)
+            assert gfm.get("type") in grader_types, g
+            if gfm["type"] == "regex":
+                assert "pattern" in gfm and "(?i)" not in gfm["pattern"], g  # inline flags unsupported
+            if gfm["type"] == "llm":
+                assert "PASS" in g.read_text() and "FAIL" in g.read_text(), g
+
+
+def test_profile_registries_lint_clean():
+    for name in ("registry.yaml", "registry.plugin-eval.yaml"):
+        rows = yaml.safe_load((ROOT / "templates" / name).read_text())
+        assert lint_registry(rows) == [], name
+    rows = yaml.safe_load((ROOT / "templates/registry.pytest.yaml").read_text()
+                          .replace("__TEST_COUNT__", "7"))
+    assert lint_registry(rows) == []

@@ -30,7 +30,7 @@
   method: programmatic
   detects: [FM-TEST-REMOVED]
   direction: higher_better
-  threshold: 81
+  threshold: 107
   noise_band: 0.0
   blocking: hard
   online: false
@@ -41,7 +41,7 @@
   method: programmatic
   detects: [FM-THEATER]
   direction: higher_better
-  threshold: 18
+  threshold: 23
   noise_band: 0.0
   blocking: hard
   online: false
