@@ -69,6 +69,9 @@ PRODUCERS = {
           # Tests failing must NOT stop the adapter: a missing/empty JUnit file
           # scores 0.0 and the gate BLOCKs — fail closed, not fail silent.
           pip install pytest
+          # EDIT if your tests need more: pip install -r requirements.txt / pip install -e .
+          [ -f requirements.txt ] && pip install -r requirements.txt || true
+          [ -f pyproject.toml ] && pip install -e . 2>/dev/null || true
           python -m pytest -q --junitxml=evals/junit.xml || true
           python evals/tools/adapters.py junit evals/junit.xml""",
     "plugin-eval": """\
@@ -124,8 +127,9 @@ def detect_profile(repo: Path) -> tuple[str, str]:
     markers = [p for p in ("tests", "test") if (repo / p).is_dir()]
     if not markers and list(repo.glob("test_*.py")) + list(repo.glob("*_test.py")):
         markers = ["test_*.py at repo root"]
+    section = re.compile(r"^\s*\[(tool\.pytest(\.ini_options)?|pytest|tool:pytest)\]", re.M)
     cfg = [p for p in ("pytest.ini", "tox.ini", "setup.cfg", "pyproject.toml")
-           if (repo / p).exists() and "pytest" in (repo / p).read_text(errors="replace")]
+           if (repo / p).exists() and section.search((repo / p).read_text(errors="replace"))]
     if markers or cfg:
         return "pytest", "found " + ", ".join(markers + cfg)
     return "llm", "no plugin manifest or test suite detected"
@@ -138,16 +142,20 @@ def count_tests(repo: Path) -> int | None:
                            cwd=repo, capture_output=True, text=True, timeout=300)
     except (OSError, subprocess.TimeoutExpired):
         return None
-    m = re.search(r"(\d+) tests? collected", r.stdout + r.stderr)
+    if r.returncode not in (0, 5):   # 5 = no tests collected; anything else = broken collection
+        return None
+    out = r.stdout + r.stderr
+    # "N tests collected", "1 test collected", "S/N tests collected (K deselected)":
+    # the SELECTED count is what JUnit will report — deselected tests never do.
+    m = re.search(r"(?:(\d+)/)?(\d+) tests? collected", out)
     if m:
-        return int(m.group(1))
-    if r.returncode in (0, 5):   # 5 = no tests collected
-        ids = [ln for ln in r.stdout.splitlines() if "::" in ln]
-        return len(ids)
-    return None
+        return int(m.group(1) if m.group(1) else m.group(2))
+    if re.search(r"no tests collected", out):
+        return 0
+    return len([ln for ln in r.stdout.splitlines() if "::" in ln])
 
 
-def install(force: bool, profile: str) -> list[str]:
+def install(force: bool, profile: str) -> str:
     created: list[str] = []
     repo = Path.cwd()
 
@@ -170,6 +178,11 @@ def install(force: bool, profile: str) -> list[str]:
             print("  note: pytest collection failed — test_count floor set to 1; "
                   "raise it in a reviewed commit once the suite collects")
             test_count = 1
+        elif test_count == 0:
+            print("  note: pytest collects 0 tests here — a floor of 0 protects nothing, "
+                  "and a 0-test run scores 0.0. Falling back to the llm profile; "
+                  "re-run with --profile pytest once tests exist.")
+            profile = "llm"
         else:
             print(f"  detected {test_count} tests -> test_count floor = {test_count}")
 
@@ -192,7 +205,7 @@ def install(force: bool, profile: str) -> list[str]:
     workflow = (TEMPLATES / "eval-gate.yml").read_text().replace(
         "__PRODUCE_CANDIDATE__", PRODUCERS[profile])
     put(repo / ".github/workflows/eval-gate.yml", text=workflow)
-    return created
+    return profile
 
 
 NEXT = {
@@ -253,7 +266,7 @@ def main() -> int:
     else:
         print(f"Profile: {profile}")
     print(f"Installing eval gate into {repo}")
-    install(args.force, profile)
+    profile = install(args.force, profile)
 
     if args.conductor:
         if not args.project:

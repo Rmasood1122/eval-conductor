@@ -217,3 +217,15 @@ def test_cli_junit_then_gate_promotes_and_blocks(tmp_path):
                         "--candidate", str(out), "--baseline", str(tmp_path / "none.json")],
                        capture_output=True, text=True)
     assert g.returncode == 1 and "test_count" in g.stdout
+
+
+def test_missing_registry_is_refused_not_silently_unattested(tmp_path):
+    with pytest.raises(AdapterError, match="registry not found"):
+        build_candidate("junit", junit(tmp_path), tmp_path / "evals/registry.yaml")
+
+
+def test_junit_non_integer_counts_refused(tmp_path):
+    p = tmp_path / "r.xml"
+    p.write_text('<testsuite name="t" tests="x" failures="0"/>')
+    with pytest.raises(AdapterError):
+        junit_scores(p)

@@ -81,10 +81,13 @@ def parse_junit(xml_path: Path) -> dict:
     suites = root.findall("testsuite") or ([root] if root.tag == "testsuite" else [])
     if not suites:
         raise AdapterError(f"{xml_path}: no <testsuite> elements")
-    tests = sum(int(s.get("tests", 0)) for s in suites)
-    failures = sum(int(s.get("failures", 0)) for s in suites)
-    errors = sum(int(s.get("errors", 0)) for s in suites)
-    skipped = sum(int(s.get("skipped", 0)) for s in suites)
+    try:
+        tests = sum(int(s.get("tests", 0)) for s in suites)
+        failures = sum(int(s.get("failures", 0)) for s in suites)
+        errors = sum(int(s.get("errors", 0)) for s in suites)
+        skipped = sum(int(s.get("skipped", 0)) for s in suites)
+    except ValueError as e:
+        raise AdapterError(f"{xml_path}: non-integer suite counts: {e}")
     return {"tests": tests, "executed": tests - skipped,
             "failed": failures + errors, "skipped": skipped}
 
@@ -201,10 +204,13 @@ ADAPTERS = {
 def build_candidate(kind: str, src: Path, registry: Path, extra_manifest: dict | None = None) -> dict:
     if kind not in ADAPTERS:
         raise AdapterError(f"unknown adapter {kind!r}; choose from {sorted(ADAPTERS)}")
+    if not registry.exists():
+        raise AdapterError(f"registry not found: {registry} — run from the repo root "
+                           f"(or pass --registry) so the candidate can attest which "
+                           f"registry it was produced against")
     scores = ADAPTERS[kind](src)
-    manifest = {"source": f"{kind}:{src}"}
-    if registry.exists():
-        manifest["registry_hash"] = hashlib.sha256(registry.read_bytes()).hexdigest()
+    manifest = {"source": f"{kind}:{src}",
+                "registry_hash": hashlib.sha256(registry.read_bytes()).hexdigest()}
     if extra_manifest:
         manifest.update(extra_manifest)
     return {"manifest": manifest, "scores": scores}

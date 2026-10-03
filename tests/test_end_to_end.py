@@ -254,3 +254,34 @@ def test_plugin_eval_profile_gate_blocks_on_zero_delta(tmp_path):
     assert a.returncode == 0, a.stderr
     g = gate(tmp_path)
     assert g.returncode == 1 and "plugin_eval_mean_delta" in g.stdout
+
+
+def test_count_tests_uses_selected_count_and_rejects_broken_collection(tmp_path, monkeypatch):
+    sys.path.insert(0, str(PLUGIN / "scripts"))
+    import eval_init
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_a.py").write_text(
+        "import pytest\n@pytest.mark.slow\ndef test_s1(): pass\n@pytest.mark.slow\n"
+        "def test_s2(): pass\ndef test_fast(): pass\n")
+    (tmp_path / "pytest.ini").write_text("[pytest]\naddopts = -m 'not slow'\nmarkers =\n    slow\n")
+    # 1/3 selected: the floor must be what JUnit will report (1), not 3
+    assert eval_init.count_tests(tmp_path) == 1
+    (tmp_path / "tests/test_b.py").write_text("import nonexistent_module\n")
+    assert eval_init.count_tests(tmp_path) is None     # collection error -> unknown
+
+
+def test_detect_profile_needs_pytest_section_not_substring(tmp_path):
+    sys.path.insert(0, str(PLUGIN / "scripts"))
+    import eval_init
+    (tmp_path / "pyproject.toml").write_text('[project]\nname="x"\n# maybe add pytest later\n')
+    assert eval_init.detect_profile(tmp_path)[0] == "llm"
+    (tmp_path / "pyproject.toml").write_text('[tool.pytest.ini_options]\ntestpaths=["t"]\n')
+    assert eval_init.detect_profile(tmp_path)[0] == "pytest"
+
+
+def test_zero_test_repo_falls_back_to_llm_profile(tmp_path):
+    (tmp_path / "pytest.ini").write_text("[pytest]\n")
+    r = run([str(PLUGIN / "scripts/eval_init.py")], tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert "collects 0 tests" in r.stdout
+    assert "task_success_rate" in (tmp_path / "evals/registry.yaml").read_text()

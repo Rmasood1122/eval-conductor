@@ -22,7 +22,12 @@ Positioning: the gate for scores you already produce.
   phrasings; the skill fires and refuses 2/2.
 - **Template fix**: the optional conductor audit step is no longer `|| true`;
   it is a commented, release-blocking step you opt into.
-- Self-gate thresholds raised to the new measured counts (107 tests, 23
+- Review fixes: `test_count` floor uses pytest's *selected* count (deselected
+  tests never reach JUnit) and returns unknown on collection errors; pytest
+  profile requires a pytest config section or tests dir, and a 0-test repo
+  falls back to `llm`; adapters refuse a missing registry instead of writing
+  an unattested candidate; generated workflow installs requirements/-e .
+- Self-gate thresholds raised to the new measured counts (112 tests, 23
   fail-closed tests). `run_self_eval.py` uses the shipped JUnit parser.
 - README rewritten around the problem, with a real BLOCK verdict; limits
   moved to a collapsed section (unchanged in substance).

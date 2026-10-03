@@ -163,7 +163,7 @@ plugin will hold you (and Claude) to that.
 
 Extracted from [eval-harness](https://github.com/Rmasood1122/eval-harness)
 (MIT, 96 tests, its own gate release-blocking in its own CI). This plugin's
-suite: 107 tests, including the exact first-session path a new user takes,
+suite: 112 tests, including the exact first-session path a new user takes,
 every adapter's refusal cases, and per-metric BLOCK proofs. Related:
 [titan-receipts](https://github.com/Rmasood1122/titan-gate-plugin) —
 tamper-evident receipts for AI-assisted commits, by the same author.
