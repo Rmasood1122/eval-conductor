@@ -47,6 +47,16 @@ __PRODUCE_CANDIDATE__
       #   run: python evals/tools/eval_receipt.py verify
       #   env:
       #     EVAL_RECEIPT_KEY: ${{ secrets.EVAL_RECEIPT_KEY }}   # omit for structure-only
+      # Pre-registered evals: prove the bar was fixed BEFORE this run. Seal the
+      # registry (python evals/tools/prereg.py seal) and commit+push the seal in
+      # evals/seals/ BEFORE producing a candidate. This step then fails closed if
+      # the registry drifted from the sealed bar — the diff-lint catches a gate
+      # that got weaker than its base; this catches a gate tuned to a score you
+      # already saw (a brand-new gate the diff-lint cannot judge).
+      # - name: Pre-registration check (bar was sealed before the run)
+      #   run: python evals/tools/prereg.py check --require-seal
+      #   env:
+      #     EVAL_RECEIPT_KEY: ${{ secrets.EVAL_RECEIPT_KEY }}   # omit for structure-only
       # Using the 27-step evidence ledger? Make its audit release-blocking too:
       # - name: Conductor audit
       #   run: python evals/tools/conductor.py audit

@@ -167,7 +167,7 @@ def _commit_info() -> dict | None:
 
 def build_receipt(decision, verdicts, *, registry_path, candidate_path,
                   baseline_path=None, manifest=None, repo=None, prev=GENESIS,
-                  key=None) -> dict:
+                  key=None, prereg=None) -> dict:
     now = datetime.now(timezone.utc)
     body = {
         "schema_version": SCHEMA,
@@ -190,6 +190,12 @@ def build_receipt(decision, verdicts, *, registry_path, candidate_path,
         "commit": _commit_info(),
         "prev_receipt_hash": prev,
     }
+    # Pre-registration status (v1.3): added to the HASHED body only when present,
+    # so a decision records that it was (or was NOT) judged under a pre-committed
+    # bar. Omitted entirely when no seal applies, keeping pre-receipt receipts
+    # byte-identical.
+    if prereg is not None:
+        body["prereg"] = prereg
     body["receipt_hash"] = hashlib.sha256(canonical_bytes(body)).hexdigest()
     if key is not None:
         body["signature"] = _sign(key, body["receipt_hash"])
@@ -197,7 +203,8 @@ def build_receipt(decision, verdicts, *, registry_path, candidate_path,
 
 
 def emit(decision, verdicts, *, registry_path, candidate_path,
-         baseline_path=None, manifest=None, receipts_dir, key) -> Path | None:
+         baseline_path=None, manifest=None, receipts_dir, key,
+         prereg=None) -> Path | None:
     """Append a signed (or unsigned, if key is None) receipt for one decision.
 
     Best-effort: on ANY failure it warns to stderr and returns None, never
@@ -209,7 +216,8 @@ def emit(decision, verdicts, *, registry_path, candidate_path,
         receipt = build_receipt(
             decision, verdicts, registry_path=registry_path,
             candidate_path=candidate_path, baseline_path=baseline_path,
-            manifest=manifest, repo=Path.cwd().name, prev=prev, key=key)
+            manifest=manifest, repo=Path.cwd().name, prev=prev, key=key,
+            prereg=prereg)
         out = receipts_dir / receipt["root_date"] / f"{receipt['receipt_id']}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(receipt, indent=2) + "\n")

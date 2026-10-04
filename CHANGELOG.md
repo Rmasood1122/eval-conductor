@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.3.0 — 2026-10-04
+
+Pre-registered evals: prove the bar was fixed *before* the run.
+
+- **Pre-registration seals** (`core/prereg.py`, vendored into your repo;
+  `/eval-seal`). `prereg.py seal` hashes `evals/registry.yaml` (and each metric's
+  `noise_band` floor) into a signed, hash-chained seal under `evals/seals/`,
+  containing **no candidate data**. At gate time the live registry is re-hashed
+  against the seal; a bar that moved after sealing is flagged as drift.
+- **Closes the hole the diff-lint structurally cannot.** `registry_diff_lint.py`
+  proves a registry didn't get weaker than its git base — but a *brand-new* gate
+  has no base ("nothing to weaken"), so a gate authored to exactly clear a score
+  you already ran passes every check. That is p-hacking your own gate.
+  Pre-registration is the deliberate, anchored base that makes "the bar was fixed
+  before the result" a checkable fact.
+- **Composes with receipts.** The gate records a `prereg` block on each receipt
+  (`sealed`, `seal_id`, `registry_match`, `bands_match`, `signature_ok`), so a
+  signed PROMOTE now proves not just "passed under this registry" but "passed
+  under the registry that was pre-committed in seal X" — and a drifted decision
+  is permanently stamped as such, inside the tamper-evident receipt itself.
+- **Opt-in enforcement, never breaks an un-sealed gate.** Recording status on
+  the receipt is a best-effort side effect that never changes the gate exit code.
+  `prereg.py check --require-seal` is the fail-closed CI knob (exit 2 on drift or
+  a missing seal); without the flag, drift is reported loudly and exits 0, so
+  upgrading is non-breaking.
+- **CI**: `templates/eval-gate.yml` gains a commented pre-registration check
+  step. Native eval case `prereg-reseal-refuses` proves the assistant refuses to
+  re-seal a weakened bar after seeing the scores (the exact laundering move).
+- Honest limits carried in the README, `/eval-seal` and the seal output: a seal
+  proves the bar is byte-identical to what was sealed and — via git anchoring —
+  committed before the result; it does **not** prove the bar is strict *enough*
+  (that's the diff-lint's and the reviewer's job), and a shared-secret key can't
+  stop its own holder backdating the `sealed_at` string — so ordering rests on
+  pushed git history, not the timestamp.
+
 ## 1.2.0 — 2026-10-04
 
 Eval receipts: a provable verdict, not just an exit code.
