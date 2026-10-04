@@ -28,7 +28,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "evals" / "registry.yaml"
@@ -48,11 +47,11 @@ FAIL_CLOSED = re.compile(
 
 
 def run_pytest_junit() -> tuple[int, int, int, int]:
-    """(collected, executed, failed, skipped) from a JUnit XML run.
-
-    executed = collected - skipped; failed includes errors. On any failure to
-    produce/parse the XML, returns zeros so the gate fails closed.
-    """
+    """(collected, executed, failed, skipped) from a JUnit XML run, via the
+    same parser the plugin ships to users (core/adapters.py). On any failure
+    to produce/parse the XML, returns zeros so the gate fails closed."""
+    sys.path.insert(0, str(ROOT / "core"))
+    from adapters import AdapterError, parse_junit  # noqa: E402
     with tempfile.TemporaryDirectory() as td:
         xml = Path(td) / "report.xml"
         subprocess.run(
@@ -60,24 +59,12 @@ def run_pytest_junit() -> tuple[int, int, int, int]:
              f"--junitxml={xml}"],
             cwd=ROOT, capture_output=True, text=True,
         )
-        if not xml.exists():
-            print("FAIL: pytest produced no JUnit XML — treating as 0 tests "
-                  "(fail closed)", file=sys.stderr)
-            return 0, 0, 0, 0
         try:
-            root = ET.parse(xml).getroot()
-        except ET.ParseError as e:
-            print(f"FAIL: unparseable JUnit XML ({e}) — fail closed",
-                  file=sys.stderr)
+            j = parse_junit(xml)
+        except AdapterError as e:
+            print(f"FAIL: {e} — treating as 0 tests (fail closed)", file=sys.stderr)
             return 0, 0, 0, 0
-    # root may be <testsuites> or a single <testsuite>
-    suites = root.findall("testsuite") or ([root] if root.tag == "testsuite" else [])
-    tests = sum(int(s.get("tests", 0)) for s in suites)
-    failures = sum(int(s.get("failures", 0)) for s in suites)
-    errors = sum(int(s.get("errors", 0)) for s in suites)
-    skipped = sum(int(s.get("skipped", 0)) for s in suites)
-    executed = tests - skipped
-    return tests, executed, failures + errors, skipped
+    return j["tests"], j["executed"], j["failed"], j["skipped"]
 
 
 def _iter_test_bodies(src: str):

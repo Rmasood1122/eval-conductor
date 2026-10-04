@@ -30,9 +30,12 @@ jobs:
             python evals/tools/registry_diff_lint.py
           fi
       - name: Produce candidate
-        # EDIT: replace with your eval command — it must write evals/candidate.json
-        run: echo "REPLACE ME — run your evals here" && test -f evals/candidate.json
+        # Must write evals/candidate.json. Adapters for JUnit, claude plugin eval,
+        # promptfoo and flat score files: python evals/tools/adapters.py --help
+        run: |
+__PRODUCE_CANDIDATE__
       - name: Gate (candidate vs baseline)
         run: python evals/tools/promote.py
-      - name: Conductor audit (optional — remove if not using the ledger)
-        run: python evals/tools/conductor.py audit || true
+      # Using the 27-step evidence ledger? Make its audit release-blocking too:
+      # - name: Conductor audit
+      #   run: python evals/tools/conductor.py audit

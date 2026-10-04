@@ -181,3 +181,107 @@ def test_baseline_rejects_non_numeric_scores(repo):
     (runs / "r1.json").write_text(json.dumps({"scores": HEALTHY}))
     r = run([str(repo / "evals/tools/baseline.py"), "--from", "evals/runs/*.json"], repo)
     assert r.returncode != 0 and "non-numeric" in (r.stdout + r.stderr)
+
+
+# ---------------------------------------------------------------- profiles
+def test_init_auto_detects_pytest_and_gates_real_numbers_first_run(tmp_path):
+    """The zero-config path: a repo with tests gets a working gate on the
+    first push, with the test_count floor measured at install time."""
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_a.py").write_text(
+        "def test_one(): pass\ndef test_two(): pass\ndef test_three(): pass\n")
+    r = run([str(PLUGIN / "scripts/eval_init.py")], tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert "Profile: pytest" in r.stdout
+    reg = (tmp_path / "evals/registry.yaml").read_text()
+    assert "test_pass_rate" in reg and "threshold: 3\n" in reg   # measured floor
+    wf = (tmp_path / ".github/workflows/eval-gate.yml").read_text()
+    assert "adapters.py junit" in wf and "REPLACE ME" not in wf
+    assert "|| true\n      - name: Gate" not in wf  # audit no longer silently optional
+    # the exact CI producer, locally
+    run(["-m", "pytest", "-q", "--junitxml=evals/junit.xml"], tmp_path)
+    a = run([str(tmp_path / "evals/tools/adapters.py"), "junit", "evals/junit.xml"], tmp_path)
+    assert a.returncode == 0, a.stderr
+    g = gate(tmp_path)
+    assert g.returncode == 0, g.stdout + g.stderr
+    assert "PROMOTE" in g.stdout
+    # delete a test -> the floor fires
+    (tmp_path / "tests/test_a.py").write_text("def test_one(): pass\n")
+    run(["-m", "pytest", "-q", "--junitxml=evals/junit.xml"], tmp_path)
+    run([str(tmp_path / "evals/tools/adapters.py"), "junit", "evals/junit.xml"], tmp_path)
+    g = gate(tmp_path)
+    assert g.returncode == 1 and "test_count" in g.stdout
+
+
+def test_init_auto_detects_claude_plugin(tmp_path):
+    (tmp_path / ".claude-plugin").mkdir()
+    (tmp_path / ".claude-plugin/plugin.json").write_text('{"name":"x"}')
+    r = run([str(PLUGIN / "scripts/eval_init.py")], tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert "Profile: plugin-eval" in r.stdout
+    reg = (tmp_path / "evals/registry.yaml").read_text()
+    assert "plugin_eval_mean_delta" in reg
+    wf = (tmp_path / ".github/workflows/eval-gate.yml").read_text()
+    assert "claude plugin eval" in wf and "adapters.py plugin-eval" in wf
+    # registry lints clean
+    r = run([str(tmp_path / "evals/tools/registry_lint.py"), "evals/registry.yaml"], tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_init_explicit_profile_overrides_detection(tmp_path):
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_a.py").write_text("def test_one(): pass\n")
+    r = run([str(PLUGIN / "scripts/eval_init.py"), "--profile", "llm"], tmp_path)
+    assert r.returncode == 0 and "Profile: llm" in r.stdout
+    assert "task_success_rate" in (tmp_path / "evals/registry.yaml").read_text()
+    assert "REPLACE ME" in (tmp_path / ".github/workflows/eval-gate.yml").read_text()
+
+
+def test_plugin_eval_profile_gate_blocks_on_zero_delta(tmp_path):
+    """A plugin that scores 1.0 with and without itself is not helping; the
+    delta row must BLOCK that."""
+    (tmp_path / ".claude-plugin").mkdir()
+    (tmp_path / ".claude-plugin/plugin.json").write_text('{"name":"x"}')
+    run([str(PLUGIN / "scripts/eval_init.py")], tmp_path)
+    res = tmp_path / "evals/results/2026-10-03T00-00-00"
+    res.mkdir(parents=True)
+    (res / "aggregate-result.json").write_text(json.dumps({
+        "schemaVersion": 1, "partial": False,
+        "aggregates": {"overallScore": 1.0, "casesPassed": 2, "casesTotal": 2, "meanDelta": 0.0},
+        "cases": [{"name": "a", "aggregates": {"score": 1.0, "delta": 0.0}},
+                  {"name": "b", "aggregates": {"score": 1.0, "delta": 0.0}}]}))
+    a = run([str(tmp_path / "evals/tools/adapters.py"), "plugin-eval", "evals/results/"], tmp_path)
+    assert a.returncode == 0, a.stderr
+    g = gate(tmp_path)
+    assert g.returncode == 1 and "plugin_eval_mean_delta" in g.stdout
+
+
+def test_count_tests_uses_selected_count_and_rejects_broken_collection(tmp_path, monkeypatch):
+    sys.path.insert(0, str(PLUGIN / "scripts"))
+    import eval_init
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_a.py").write_text(
+        "import pytest\n@pytest.mark.slow\ndef test_s1(): pass\n@pytest.mark.slow\n"
+        "def test_s2(): pass\ndef test_fast(): pass\n")
+    (tmp_path / "pytest.ini").write_text("[pytest]\naddopts = -m 'not slow'\nmarkers =\n    slow\n")
+    # 1/3 selected: the floor must be what JUnit will report (1), not 3
+    assert eval_init.count_tests(tmp_path) == 1
+    (tmp_path / "tests/test_b.py").write_text("import nonexistent_module\n")
+    assert eval_init.count_tests(tmp_path) is None     # collection error -> unknown
+
+
+def test_detect_profile_needs_pytest_section_not_substring(tmp_path):
+    sys.path.insert(0, str(PLUGIN / "scripts"))
+    import eval_init
+    (tmp_path / "pyproject.toml").write_text('[project]\nname="x"\n# maybe add pytest later\n')
+    assert eval_init.detect_profile(tmp_path)[0] == "llm"
+    (tmp_path / "pyproject.toml").write_text('[tool.pytest.ini_options]\ntestpaths=["t"]\n')
+    assert eval_init.detect_profile(tmp_path)[0] == "pytest"
+
+
+def test_zero_test_repo_falls_back_to_llm_profile(tmp_path):
+    (tmp_path / "pytest.ini").write_text("[pytest]\n")
+    r = run([str(PLUGIN / "scripts/eval_init.py")], tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert "collects 0 tests" in r.stdout
+    assert "task_success_rate" in (tmp_path / "evals/registry.yaml").read_text()
