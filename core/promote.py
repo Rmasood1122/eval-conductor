@@ -123,6 +123,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="never emit a receipt (default without a key)")
     ap.add_argument("--receipts-dir", default="evals/receipts")
     ap.add_argument("--receipt-key", default="evals/.receipt-key")
+    # Pre-registration: if a seal exists, record on the receipt whether this
+    # decision was judged under the pre-committed bar. Read-only here; enforce
+    # drift with `prereg.py check --require-seal` in CI.
+    ap.add_argument("--seals-dir", default="evals/seals")
     args = ap.parse_args(argv)
 
     baseline = None
@@ -200,11 +204,41 @@ def _maybe_emit_receipt(args, decision, verdicts, registry_path, candidate_path,
         if not enabled:
             return
         manifest = raw.get("manifest") if isinstance(raw, dict) else None
+        prereg = _prereg_status(args, registry_path, key)
         eval_receipt.emit(decision, verdicts, registry_path=registry_path,
                           candidate_path=candidate_path, baseline_path=baseline_path,
-                          manifest=manifest, receipts_dir=receipts_dir, key=key)
+                          manifest=manifest, receipts_dir=receipts_dir, key=key,
+                          prereg=prereg)
     except Exception as exc:  # noqa: BLE001 - never let receipting break the gate
         print(f"RECEIPT: skipped ({type(exc).__name__}: {exc})", file=sys.stderr)
+
+
+def _prereg_status(args, registry_path, key) -> dict | None:
+    """Pre-registration status for this decision, recorded on the receipt so it
+    proves the bar was (or was NOT) pre-committed. Best-effort and read-only:
+    any failure returns None and never affects the gate. Enforcement of drift
+    is a SEPARATE opt-in CI step (prereg.py check --require-seal), not here —
+    the gate's exit code stays a pure function of the verdicts."""
+    try:
+        seals_dir = Path(getattr(args, "seals_dir", "evals/seals"))
+        if not seals_dir.exists() or not any(seals_dir.rglob("*.json")):
+            return None  # unsealed gate: record nothing, stay byte-compatible
+        import prereg  # noqa: E402  (same dir; sys.path set above)
+        bands = prereg.bands_from_registry(registry_path)
+        status = prereg.check_drift(registry_path, seals_dir=seals_dir,
+                                    key=key, bands=bands)
+        if status.get("registry_match") is False:
+            print("PRE-REG: the registry drifted from the sealed bar — this "
+                  "decision was NOT made under the pre-committed registry. "
+                  "Run 'prereg.py check --require-seal' in CI to enforce.",
+                  file=sys.stderr)
+        return {k: status[k] for k in
+                ("sealed", "seal_id", "registry_match", "bands_match",
+                 "signature_ok", "chain_ok")}
+    except Exception as exc:  # noqa: BLE001 - never let pre-reg break the gate
+        print(f"PRE-REG: status unavailable ({type(exc).__name__}: {exc})",
+              file=sys.stderr)
+        return None
 
 
 if __name__ == "__main__":

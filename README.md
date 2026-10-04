@@ -71,6 +71,7 @@ install isn't done until the gate has been **seen** to BLOCK.
 | `/eval-baseline` | Runs your eval N times (default 10) and measures noise bands per metric — mean ± 2σ, plus a robust median ± MAD band for rows marked `band_method: mad` (use it for pass-rates and anything bounded near 0/1). Warns when N is too low or a band comes out zero. |
 | `/eval-explain` | Explains a gate decision in plain English: which metric, absolute breach vs regression beyond noise, how far past the line, the one legitimate fix — and the theater moves, named. Same decision logic as the gate; can never disagree with it. |
 | `/eval-verify` | Walks the eval receipt chain offline: structure + every signature + each decision against its own verdicts. Any tamper, fork, or decision/verdict mismatch → exit 1 naming the receipt. `--structure-only` checks without the key. Ends with an `ANCHOR` line: how many receipts are committed **and pushed**. |
+| `/eval-seal` | Pre-registers the bar: seals `registry.yaml` + band floors into a signed, hash-chained seal **before** a run, so a later decision can prove it was judged under a bar fixed in advance. `prereg.py check --require-seal` fails CI closed (exit 2) if the live bar drifted from the seal. |
 | `/conductor` | The 27-step evidence-gated build ledger: CI steps close only on an Actions-run URL; with `--verify-evidence` the run must also exist in this repo and be green (GitHub API). Placeholder evidence is refused; reversals are logged, not erased. |
 
 ## Works with what you already run
@@ -137,6 +138,41 @@ candidate scores were honestly produced (that's what the gate, adapters, and the
 `partial: true` refusal are for). Coverage is only as good as the chain is
 distributed — the `ANCHOR` line flags receipts that verify but aren't pushed: a
 local-only chain is a claim, not evidence.
+
+## Pre-registered evals — prove the bar was fixed *before* the run
+
+The diff lint proves the registry didn't get *weaker than its git base*. It has
+one blind spot, by construction: a **brand-new** gate has no base ("nothing to
+weaken"). So the sharpest move stays open — author a bar that exactly clears a
+score you already ran, commit registry and candidate together, and every check
+passes. The number is real; the bar was reverse-engineered from the result.
+That's p-hacking your own gate, and no eval tool asks the question that catches
+it: *when was the bar fixed, relative to the run?*
+
+`/eval-seal` answers it. It hashes `registry.yaml` (and each metric's band
+floor) into a signed, hash-chained **seal** — containing **no candidate data** —
+written to `evals/seals/`. Seal and push it *before* you produce a candidate.
+At gate time the live registry is re-hashed against the seal: a bar that moved
+after sealing is **drift**, and the gate stamps the result onto the receipt
+(`prereg: {registry_match: false, …}`) — so even a signed PROMOTE carries proof
+it was judged under a bar that drifted from the one pre-committed.
+`prereg.py check --require-seal` makes drift (or a missing seal) a
+release-blocking CI failure.
+
+The three controls compose into one story no incumbent has: the bar **can't
+weaken** vs base (diff lint), the bar was **fixed before the result**
+(pre-registration), and the decision is **tamper-evident proof** of both
+(receipt).
+
+**What a seal proves — exactly, no more.** It proves the live bar is
+byte-identical to what was sealed, and — because the seal is committed and pushed
+like a receipt — that it was committed before the result, witnessed by shared git
+history rather than the gate owner's word. It does **not** prove the bar is
+strict *enough* (that's the diff lint's and the reviewer's job), and a
+shared-secret key cannot stop its own holder backdating the `sealed_at` string —
+which is exactly why ordering rests on pushed history, not the timestamp. If the
+bar legitimately needs to change, seal again **before** re-running the candidate,
+and record why in `registry_changes.yaml`.
 
 ## Skills
 

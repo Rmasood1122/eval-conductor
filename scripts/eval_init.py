@@ -213,7 +213,8 @@ def install(force: bool, profile: str) -> str:
         put(repo / "evals/candidate.example.json", src=TEMPLATES / "candidate.example.json")
     for f in ("promote.py", "compare.py", "adapters.py", "registry_lint.py",
               "registry_diff_lint.py", "baseline.py", "conductor.py", "explain.py",
-              "eval_receipt.py", "wedge.py", "canonical.py", "chain_state.py",
+              "eval_receipt.py", "prereg.py", "wedge.py", "canonical.py",
+              "chain_state.py",
               "steps.yaml"):
         put(repo / "evals/tools" / f, src=CORE / f)
     put(repo / "evals/fixtures/README.md", text=FIXTURES_README)
