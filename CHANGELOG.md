@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.4.0 — 2026-10-04
+
+Zero-config wedge: `/eval-prove` — one command, a signed proof of your tests.
+
+- **`/eval-prove` (`core/wedge.py`, vendored into your repo)** turns an existing
+  test suite into a tamper-evident, signed receipt **plus a pasteable PR badge**,
+  with **no registry and no config**. Detects and runs pytest, or consumes a
+  JUnit file (`--junit`) or any command that writes JUnit (`--run`).
+- **Proof + auto-gate (capture-then-gate).** The first run has nothing to regress
+  against, so it PROMOTEs and records the measured pass-rate and test-count as the
+  bar (`evals/.wedge-baseline.json`). Later runs BLOCK if the pass-rate drops or
+  tests disappear (the oldest way to turn a gate green). The bar ratchets up on a
+  clean run and never down — a BLOCK never lowers it. A hardcoded "100% or BLOCK"
+  was rejected: it would fail every flaky suite on run one.
+- **Same proof engine as the full gate.** Receipts come from `eval_receipt`, so a
+  wedge proof and a gate proof verify identically; a signing key is auto-generated
+  (gitignored) on first run, so proofs are signed by default.
+- **Fail-closed.** No detectable suite and no `--junit`/`--run` → exit 2 (no proof
+  of an unmeasured run), with a one-line pointer, never a traceback. Zero executed
+  tests → pass-rate 0.0.
+- **Honest badge.** The badge always shows the test COUNT, and the output states
+  that a green badge proves "not worse than before", not "good", and that one run
+  doesn't calibrate flakiness — graduate to `/eval-init` for measured noise bands
+  and real thresholds. The wedge is the on-ramp; `/eval-init` is the next room.
+- 12 new tests (`tests/test_wedge.py`); vendored by `/eval-init`; wedge artifacts
+  gitignored in the user repo. Dogfooded: proves eval-conductor's own 166 tests.
+
 ## 1.2.0 — 2026-10-04
 
 Eval receipts: a provable verdict, not just an exit code.

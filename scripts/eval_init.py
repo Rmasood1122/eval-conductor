@@ -213,7 +213,8 @@ def install(force: bool, profile: str) -> str:
         put(repo / "evals/candidate.example.json", src=TEMPLATES / "candidate.example.json")
     for f in ("promote.py", "compare.py", "adapters.py", "registry_lint.py",
               "registry_diff_lint.py", "baseline.py", "conductor.py", "explain.py",
-              "eval_receipt.py", "canonical.py", "chain_state.py", "steps.yaml"):
+              "eval_receipt.py", "wedge.py", "canonical.py", "chain_state.py",
+              "steps.yaml"):
         put(repo / "evals/tools" / f, src=CORE / f)
     put(repo / "evals/fixtures/README.md", text=FIXTURES_README)
     workflow = (TEMPLATES / "eval-gate.yml").read_text().replace(
@@ -225,7 +226,8 @@ def install(force: bool, profile: str) -> str:
     # receipts themselves (evals/receipts/) ARE committed — they are the anchor
     # — so they are deliberately NOT ignored.
     import secrets as _secrets
-    ensure_gitignore(repo, ["evals/.receipt-key"])
+    ensure_gitignore(repo, ["evals/.receipt-key", "evals/.wedge-baseline.json",
+                            "evals/.eval-prove-junit.xml"])
     key_path = repo / "evals/.receipt-key"
     if not key_path.exists():  # never clobber an existing key — it would orphan old receipts
         key_path.write_text(_secrets.token_hex(32) + "\n")
