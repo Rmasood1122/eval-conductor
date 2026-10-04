@@ -155,6 +155,19 @@ def count_tests(repo: Path) -> int | None:
     return len([ln for ln in r.stdout.splitlines() if "::" in ln])
 
 
+def ensure_gitignore(repo: Path, lines: list[str]) -> None:
+    gi = repo / ".gitignore"
+    text = gi.read_text() if gi.exists() else ""
+    existing = set(text.splitlines())
+    add = [ln for ln in lines if ln not in existing]
+    if not add:
+        return
+    body = (text.rstrip("\n") + "\n" if text else "") + "\n".join(add) + "\n"
+    gi.write_text(body)
+    for ln in add:
+        print(f"  gitignore: added {ln}")
+
+
 def install(force: bool, profile: str) -> str:
     created: list[str] = []
     repo = Path.cwd()
@@ -200,12 +213,29 @@ def install(force: bool, profile: str) -> str:
         put(repo / "evals/candidate.example.json", src=TEMPLATES / "candidate.example.json")
     for f in ("promote.py", "compare.py", "adapters.py", "registry_lint.py",
               "registry_diff_lint.py", "baseline.py", "conductor.py", "explain.py",
-              "steps.yaml"):
+              "eval_receipt.py", "canonical.py", "chain_state.py", "steps.yaml"):
         put(repo / "evals/tools" / f, src=CORE / f)
     put(repo / "evals/fixtures/README.md", text=FIXTURES_README)
     workflow = (TEMPLATES / "eval-gate.yml").read_text().replace(
         "__PRODUCE_CANDIDATE__", PRODUCERS[profile])
     put(repo / ".github/workflows/eval-gate.yml", text=workflow)
+
+    # Eval receipts: gitignore the signing key (never committed) and generate
+    # one so every gate run signs a tamper-evident receipt automatically. The
+    # receipts themselves (evals/receipts/) ARE committed — they are the anchor
+    # — so they are deliberately NOT ignored.
+    import secrets as _secrets
+    ensure_gitignore(repo, ["evals/.receipt-key"])
+    key_path = repo / "evals/.receipt-key"
+    if not key_path.exists():  # never clobber an existing key — it would orphan old receipts
+        key_path.write_text(_secrets.token_hex(32) + "\n")
+        try:
+            key_path.chmod(0o600)
+        except OSError:
+            pass
+        created.append(str(key_path.relative_to(repo)))
+        print(f"  wrote: {key_path.relative_to(repo)} (signing key — gitignored, "
+              f"never commit it; receipts sign automatically now)")
     return profile
 
 

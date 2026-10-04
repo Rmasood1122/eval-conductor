@@ -115,6 +115,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--registry", default="evals/registry.yaml")
     ap.add_argument("--baseline", default="evals/baseline.json")
     ap.add_argument("--candidate", default="evals/candidate.json")
+    # Eval receipts: a tamper-evident, signed proof of this decision. Emission
+    # is a fail-OPEN side effect — it never changes the exit code below.
+    ap.add_argument("--receipt", dest="receipt", action="store_true", default=None,
+                    help="force-emit a signed eval receipt for this decision")
+    ap.add_argument("--no-receipt", dest="receipt", action="store_false",
+                    help="never emit a receipt (default without a key)")
+    ap.add_argument("--receipts-dir", default="evals/receipts")
+    ap.add_argument("--receipt-key", default="evals/.receipt-key")
     args = ap.parse_args(argv)
 
     baseline = None
@@ -170,7 +178,33 @@ def main(argv: list[str] | None = None) -> int:
     warns = [v for v in verdicts if v.status == "WARN"]
     print(f"\nDECISION: {decision}"
           + (f"  ({len(warns)} soft warning(s) -> human review)" if warns else ""))
+
+    _maybe_emit_receipt(args, decision, verdicts, rp, cp,
+                        bp if bp.exists() else None, raw)
     return 0 if decision == "PROMOTE" else 1
+
+
+def _maybe_emit_receipt(args, decision, verdicts, registry_path, candidate_path,
+                        baseline_path, raw) -> None:
+    """Emit a tamper-evident receipt for this decision. Entirely best-effort:
+    any failure here is swallowed so the gate's PROMOTE/BLOCK verdict and exit
+    code are never affected."""
+    try:
+        import eval_receipt  # noqa: E402  (same dir; sys.path set above)
+        receipts_dir = Path(args.receipts_dir)
+        key = eval_receipt.load_key_from(args.receipt_key)
+        enabled = args.receipt
+        if enabled is None:  # auto: on once a key exists or receipts already do
+            enabled = key is not None or (
+                receipts_dir.exists() and any(receipts_dir.rglob("*.json")))
+        if not enabled:
+            return
+        manifest = raw.get("manifest") if isinstance(raw, dict) else None
+        eval_receipt.emit(decision, verdicts, registry_path=registry_path,
+                          candidate_path=candidate_path, baseline_path=baseline_path,
+                          manifest=manifest, receipts_dir=receipts_dir, key=key)
+    except Exception as exc:  # noqa: BLE001 - never let receipting break the gate
+        print(f"RECEIPT: skipped ({type(exc).__name__}: {exc})", file=sys.stderr)
 
 
 if __name__ == "__main__":

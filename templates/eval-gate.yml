@@ -36,6 +36,17 @@ jobs:
 __PRODUCE_CANDIDATE__
       - name: Gate (candidate vs baseline)
         run: python evals/tools/promote.py
+        # Sign a tamper-evident eval receipt for this decision. The gate emits
+        # one automatically when a key is present; add the secret to sign in CI.
+        # (Without the key it still gates — receipts just stay unsigned.)
+        # env:
+        #   EVAL_RECEIPT_KEY: ${{ secrets.EVAL_RECEIPT_KEY }}
+      # Make the receipt chain release-blocking: a tampered, forked, or
+      # decision-inconsistent receipt fails the build. Commit evals/receipts/.
+      # - name: Verify eval receipts
+      #   run: python evals/tools/eval_receipt.py verify
+      #   env:
+      #     EVAL_RECEIPT_KEY: ${{ secrets.EVAL_RECEIPT_KEY }}   # omit for structure-only
       # Using the 27-step evidence ledger? Make its audit release-blocking too:
       # - name: Conductor audit
       #   run: python evals/tools/conductor.py audit

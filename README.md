@@ -69,6 +69,7 @@ install isn't done until the gate has been **seen** to BLOCK.
 | `/eval-gate` | Candidate vs baseline under the registry → per-metric verdict table → **PROMOTE** (exit 0) / **BLOCK** (exit 1). |
 | `/eval-baseline` | Runs your eval N times (default 10) and measures noise bands per metric — mean ± 2σ, plus a robust median ± MAD band for rows marked `band_method: mad` (use it for pass-rates and anything bounded near 0/1). Warns when N is too low or a band comes out zero. |
 | `/eval-explain` | Explains a gate decision in plain English: which metric, absolute breach vs regression beyond noise, how far past the line, the one legitimate fix — and the theater moves, named. Same decision logic as the gate; can never disagree with it. |
+| `/eval-verify` | Walks the eval receipt chain offline: structure + every signature + each decision against its own verdicts. Any tamper, fork, or decision/verdict mismatch → exit 1 naming the receipt. `--structure-only` checks without the key. Ends with an `ANCHOR` line: how many receipts are committed **and pushed**. |
 | `/conductor` | The 27-step evidence-gated build ledger: CI steps close only on an Actions-run URL; with `--verify-evidence` the run must also exist in this repo and be green (GitHub API). Placeholder evidence is refused; reversals are logged, not erased. |
 
 ## Works with what you already run
@@ -108,6 +109,33 @@ ledger), and found that `NaN` scores passed every threshold check silently.
 - **Soft metrics WARN, monitor-only report** — tier promotion is earned with
   validated measurement (an LLM judge gates only after ≥85% agreement with
   human labels).
+
+## Eval receipts — a provable verdict, not just an exit code
+
+A green gate is ephemeral: nothing proves *what* passed, *under which registry*,
+or that a `BLOCK` was ever produced. Once a signing key exists (`/eval-init`
+generates one, gitignored), **every gate run appends a tamper-evident receipt**
+to `evals/receipts/` that binds the decision to the exact `registry`,
+`candidate` and `baseline` bytes it was computed from, HMAC-signs it, and links
+it into an append-only hash chain. "It passed" becomes cryptographic proof it
+passed, unaltered, at this time, under this registry — and a deleted or
+reordered `BLOCK` breaks the chain. `/eval-verify` is the enforcement point
+(make it release-blocking in CI).
+
+Emission never changes the gate: it's a fail-**open** side effect, so a receipt
+bug can't turn a BLOCK into a PROMOTE or crash the build. Three tamper checks
+run at verify time — chain integrity, signature, and **decision-vs-verdicts
+consistency** (a re-signed receipt whose recorded PROMOTE disagrees with its own
+BLOCK verdict is caught). The chain + canonicalization engine is fused from the
+[titan-receipts](https://github.com/Rmasood1122/titan-gate-plugin) plugin.
+
+**What a receipt proves — exactly, no more.** HMAC is a shared secret: a passing
+verify proves the decision is unaltered since signing under a key your team
+controls; it does **not** identify the signer, and it does not prove the
+candidate scores were honestly produced (that's what the gate, adapters, and the
+`partial: true` refusal are for). Coverage is only as good as the chain is
+distributed — the `ANCHOR` line flags receipts that verify but aren't pushed: a
+local-only chain is a claim, not evidence.
 
 ## Skills
 
