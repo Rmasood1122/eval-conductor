@@ -1,8 +1,8 @@
 {
   "name": "eval-conductor",
   "displayName": "Eval Conductor",
-  "version": "1.1.0",
-  "description": "Stop your AI evals from quietly regressing. Fail-closed release gate for scores you already produce (claude plugin eval, pytest, promptfoo, any JSON) — BLOCKs CI on regression, NaN/missing metrics, stale baselines and edited thresholds, with registry-driven thresholds and measured noise bands. Includes the 27-step evidence-gated build ledger.",
+  "version": "1.2.0",
+  "description": "Stop your AI evals from quietly regressing. Fail-closed release gate for scores you already produce (claude plugin eval, pytest, promptfoo, any JSON) — BLOCKs CI on regression, NaN/missing metrics, stale baselines and edited thresholds, with registry-driven thresholds and measured noise bands. Every PROMOTE/BLOCK emits a tamper-evident, signed, hash-chained eval receipt. Includes the 27-step evidence-gated build ledger.",
   "author": {
     "name": "Rehan Masood",
     "email": "rmasood524@gmail.com",

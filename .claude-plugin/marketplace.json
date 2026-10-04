@@ -9,7 +9,7 @@
     {
       "name": "eval-conductor",
       "source": "./",
-      "description": "Stop AI evals quietly regressing: fail-closed release gate for scores you already produce (claude plugin eval, pytest, promptfoo) + evidence-gated build ledger. /eval-init gates real numbers on the first push."
+      "description": "Stop AI evals quietly regressing: fail-closed release gate for scores you already produce (claude plugin eval, pytest, promptfoo), with signed tamper-evident receipts for every PROMOTE/BLOCK, + an evidence-gated build ledger. /eval-init gates real numbers on the first push."
     }
   ]
 }

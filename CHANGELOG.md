@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.2.0 — 2026-10-04
+
+Eval receipts: a provable verdict, not just an exit code.
+
+- **Tamper-evident eval receipts** (`core/eval_receipt.py`, vendored into your
+  repo; `/eval-verify`). Once a signing key exists (`/eval-init` now generates
+  one, gitignored), every `/eval-gate` run appends an HMAC-signed, hash-chained
+  receipt to `evals/receipts/` binding the PROMOTE/BLOCK decision to the exact
+  registry, candidate and baseline **bytes** it was computed from. A deleted or
+  reordered receipt breaks the chain.
+- **Fused from titan-receipts.** The canonicalization (`core/canonical.py`) and
+  fork-detecting chain engine (`core/chain_state.py`) are ported from the
+  titan-gate plugin — stdlib-only, byte-compatible — rather than reinvented or
+  taken as a runtime dependency.
+- **Three verify-time tamper checks**: chain integrity (one unbroken line from
+  GENESIS, every `receipt_hash` recomputed from content), signature, and an
+  eval-specific **decision-vs-verdicts consistency** check — a re-signed receipt
+  whose recorded decision disagrees with its own verdict table is caught.
+  `--structure-only` verifies without the key; the closing `ANCHOR` line reports
+  how many receipts are committed **and pushed**.
+- **Fail-open emission.** Receipting is a side effect that never changes the
+  gate's exit code or crashes CI: a broken chain or unwritable path warns
+  (`RECEIPT:`) and skips. Enforcement lives in `/eval-verify`, not the gate.
+- **CI**: `templates/eval-gate.yml` gains a commented `EVAL_RECEIPT_KEY` secret
+  and a release-blocking verify step. Native eval case `receipt-tamper-blocks`
+  proves the assistant treats a verify failure as blocking, never "re-sign it".
+- Honest limits carried in the README and verify output: HMAC is a shared
+  secret — a receipt proves the decision is unaltered under a key you control,
+  not who signed it, and not that the scores were honestly produced.
+
 ## 1.1.0 — 2026-10-03
 
 Positioning: the gate for scores you already produce.
