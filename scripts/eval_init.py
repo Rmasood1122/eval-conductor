@@ -7,8 +7,8 @@ Creates (never overwrites without --force):
   evals/candidate.example.json   the score contract your eval run must emit
   evals/tools/                   vendored gate: promote.py, compare.py, adapters.py,
                                  registry_lint.py, registry_diff_lint.py,
-                                 baseline.py, conductor.py, steps.yaml
-                                 (stdlib + PyYAML only)
+                                 baseline.py, conductor.py, explain.py,
+                                 steps.yaml  (stdlib + PyYAML only)
   evals/fixtures/README.md       how to prove every hard gate can BLOCK
   .github/workflows/eval-gate.yml  CI wiring, producer pre-filled for the profile
 
@@ -199,7 +199,8 @@ def install(force: bool, profile: str) -> str:
     else:
         put(repo / "evals/candidate.example.json", src=TEMPLATES / "candidate.example.json")
     for f in ("promote.py", "compare.py", "adapters.py", "registry_lint.py",
-              "registry_diff_lint.py", "baseline.py", "conductor.py", "steps.yaml"):
+              "registry_diff_lint.py", "baseline.py", "conductor.py", "explain.py",
+              "steps.yaml"):
         put(repo / "evals/tools" / f, src=CORE / f)
     put(repo / "evals/fixtures/README.md", text=FIXTURES_README)
     workflow = (TEMPLATES / "eval-gate.yml").read_text().replace(

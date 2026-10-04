@@ -38,7 +38,8 @@ def frontmatter(path: Path) -> dict:
 
 def test_commands_frontmatter():
     cmds = sorted((ROOT / "commands").glob("*.md"))
-    assert {c.stem for c in cmds} == {"eval-init", "eval-gate", "eval-baseline", "eval-import", "conductor"}
+    assert {c.stem for c in cmds} == {"eval-init", "eval-gate", "eval-baseline",
+                                      "eval-import", "eval-explain", "conductor"}
     for c in cmds:
         data = frontmatter(c)
         assert data.get("description"), c

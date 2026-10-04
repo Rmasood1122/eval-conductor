@@ -11,10 +11,14 @@ Repo-agnostic. Two modes:
 Output (default evals/baseline.json):
   {"manifest": <copied from the last candidate, if present>,
    "n_runs": N,
-   "metrics": {"<name>": {"mean": m, "sigma": s, "band_2sigma": 2s}}}
+   "metrics": {"<name>": {"mean": m, "sigma": s, "band_2sigma": 2s,
+                          "median": md, "mad": a, "band_mad": 2*1.4826*a}}}
 
-The gate uses max(registry noise_band, band_2sigma) as the regression band,
-so a noisy metric earns a wide band from DATA, not from someone's guess.
+The gate uses max(registry noise_band, measured band) as the regression band,
+so a noisy metric earns a wide band from DATA, not from someone's guess. The
+measured band is band_2sigma by default, or band_mad for rows that declare
+`band_method: mad` (robust; the right choice for pass-rates and anything
+bounded near 0 or 1 — see F-E2 in the audit).
 Refuses to write a baseline from fewer than 2 runs unless --allow-single.
 
 HONESTY ABOUT N (read this before trusting a band):
@@ -43,6 +47,25 @@ from pathlib import Path
 # 2-sigma estimate is too noisy to be called a measurement — we still write
 # it, but we say so loudly. See the module docstring on N.
 RECOMMENDED_RUNS = 10
+
+# Robust band (F-E2). mean ± 2σ assumes an unbounded, roughly normal metric.
+# Pass-rates and anything pinned near 0 or 1 are neither: the ceiling
+# compresses the variance, one outlier run blows σ up, and the symmetric band
+# is the wrong shape. median ± k·1.4826·MAD is the standard robust
+# alternative — 1.4826 scales MAD to σ under normality, so k=2 keeps the
+# same nominal coverage as band_2sigma while ignoring single outliers.
+# Per-row opt-in via registry `band_method: mad`; default stays sigma.
+MAD_SCALE = 1.4826
+MAD_K = 2.0
+
+
+def robust_stats(vals: list[float]) -> tuple[float, float]:
+    """(median, MAD) of vals. MAD = median(|x - median|). Both 0.0 for n<2."""
+    if len(vals) < 2:
+        return (float(vals[0]) if vals else 0.0), 0.0
+    med = statistics.median(vals)
+    mad = statistics.median(abs(v - med) for v in vals)
+    return float(med), float(mad)
 
 
 def band_warnings(baseline: dict) -> list[str]:
@@ -119,7 +142,13 @@ def build_baseline(runs: list[dict]) -> dict:
                              f"— a broken instrument must not become the baseline")
         mean = statistics.fmean(vals)
         sigma = statistics.stdev(vals) if len(vals) > 1 else 0.0
-        metrics[name] = {"mean": mean, "sigma": sigma, "band_2sigma": 2 * sigma}
+        median, mad = robust_stats(vals)
+        metrics[name] = {
+            "mean": mean, "sigma": sigma, "band_2sigma": 2 * sigma,
+            # robust companions (F-E2): used when the registry row says
+            # band_method: mad. Always written so one baseline serves both.
+            "median": median, "mad": mad, "band_mad": MAD_K * MAD_SCALE * mad,
+        }
     out = {"n_runs": len(runs), "metrics": metrics}
     last_manifest = runs[-1].get("manifest")
     if isinstance(last_manifest, dict):
@@ -131,7 +160,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--cmd", help="eval command to run N times")
-    ap.add_argument("--runs", type=int, default=3)
+    ap.add_argument("--runs", type=int, default=RECOMMENDED_RUNS,
+                    help=f"eval runs to measure noise from (default "
+                         f"{RECOMMENDED_RUNS}; fewer prints a trust warning)")
     ap.add_argument("--from", dest="from_glob", help="glob of candidate files")
     ap.add_argument("--candidate", default="evals/candidate.json")
     ap.add_argument("--out", default="evals/baseline.json")
@@ -153,7 +184,8 @@ def main(argv: list[str] | None = None) -> int:
     out.write_text(json.dumps(baseline, indent=2) + "\n")
     print(f"baseline written -> {out}  (runs: {baseline['n_runs']})")
     for k, v in baseline["metrics"].items():
-        print(f"  {k}: mean {v['mean']:.4f}  band_2sigma {v['band_2sigma']:.4f}")
+        print(f"  {k}: mean {v['mean']:.4f}  band_2sigma {v['band_2sigma']:.4f}"
+              f"  | median {v['median']:.4f}  band_mad {v['band_mad']:.4f}")
     warns = band_warnings(baseline)
     for w in warns:
         print(f"WARNING: {w}", file=sys.stderr)

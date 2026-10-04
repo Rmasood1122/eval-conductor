@@ -67,8 +67,9 @@ install isn't done until the gate has been **seen** to BLOCK.
 | `/eval-init` | Installs the gate: registry, gate CLI, adapters, baseline runner, BLOCK-fixture guide, CI workflow with the producer pre-filled. Never overwrites without `--force`. |
 | `/eval-import` | Converts scores you already have into `candidate.json`: `junit <xml>`, `plugin-eval <results dir>`, `promptfoo <json>`, `scores <json>`. |
 | `/eval-gate` | Candidate vs baseline under the registry → per-metric verdict table → **PROMOTE** (exit 0) / **BLOCK** (exit 1). |
-| `/eval-baseline` | Runs your eval N times, computes mean + 2σ noise bands per metric — regression bands from data, not guesses. |
-| `/conductor` | The 27-step evidence-gated build ledger: steps close only on real CI-run URLs; placeholder evidence is refused; reversals are logged, not erased. |
+| `/eval-baseline` | Runs your eval N times (default 10) and measures noise bands per metric — mean ± 2σ, plus a robust median ± MAD band for rows marked `band_method: mad` (use it for pass-rates and anything bounded near 0/1). Warns when N is too low or a band comes out zero. |
+| `/eval-explain` | Explains a gate decision in plain English: which metric, absolute breach vs regression beyond noise, how far past the line, the one legitimate fix — and the theater moves, named. Same decision logic as the gate; can never disagree with it. |
+| `/conductor` | The 27-step evidence-gated build ledger: CI steps close only on an Actions-run URL; with `--verify-evidence` the run must also exist in this repo and be green (GitHub API). Placeholder evidence is refused; reversals are logged, not erased. |
 
 ## Works with what you already run
 
