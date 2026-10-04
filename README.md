@@ -64,6 +64,7 @@ install isn't done until the gate has been **seen** to BLOCK.
 
 | Command | What it does |
 |---|---|
+| `/eval-prove` | **Start here.** One command, zero config: runs your existing tests (or takes a `--junit` file), emits a signed, tamper-evident receipt, and prints a pasteable PR badge. First run captures the bar; a later run that drops the pass-rate or loses tests → **BLOCK**. The on-ramp before you define a registry. |
 | `/eval-init` | Installs the gate: registry, gate CLI, adapters, baseline runner, BLOCK-fixture guide, CI workflow with the producer pre-filled. Never overwrites without `--force`. |
 | `/eval-import` | Converts scores you already have into `candidate.json`: `junit <xml>`, `plugin-eval <results dir>`, `promptfoo <json>`, `scores <json>`. |
 | `/eval-gate` | Candidate vs baseline under the registry → per-metric verdict table → **PROMOTE** (exit 0) / **BLOCK** (exit 1). |
