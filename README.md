@@ -2,14 +2,79 @@
 
 [![CI](https://github.com/Rmasood1122/eval-conductor/actions/workflows/ci.yml/badge.svg)](https://github.com/Rmasood1122/eval-conductor/actions/workflows/ci.yml)
 
-**Stop your AI evals from quietly regressing.** A fail-closed release gate
-for the scores you already produce — `claude plugin eval`, pytest, promptfoo,
-or any JSON of numbers — that BLOCKs CI on regression, broken scorers, stale
-baselines, and quietly-edited thresholds. Plus the 27-step evidence-gated
-build ledger that refuses fake progress.
+**The integrity layer for your evals.** Your evals already produce numbers — from
+`claude plugin eval`, pytest, promptfoo, or your own scripts. This proves them: that
+the verdict is real, the bar was fixed before the run, and the decision is
+tamper-evident. It sits next to MLflow, LangSmith or Braintrust; it doesn't replace
+them. It answers the one question none of them do:
 
-`claude plugin eval` and DeepEval tell you today's score. This plugin makes
-sure that score can't get worse without someone noticing.
+> **Can you *prove* this eval result — or do we just trust it?**
+
+Open source, MIT. stdlib + PyYAML only. No API keys, no infrastructure, nothing
+phones home. Dogfooded on its own 178 tests.
+
+*The thesis: trust an AI verdict only by what it can prove.*
+
+## Start in 60 seconds — no config
+
+```
+/eval-prove
+```
+
+Runs the tests you already have, emits a **signed, tamper-evident receipt** that they
+passed at this commit, and prints a badge to paste in your PR:
+
+```
+PROVEN: 142/142 tests pass (100%)   receipt a1b2c3…
+![evals](https://img.shields.io/badge/evals-proven%20142%2F142-brightgreen)
+```
+
+The first run captures your current pass rate and test count as the bar. A later run
+that quietly drops the pass rate — or deletes tests to go green — gets **BLOCKED**.
+No registry, no setup. When you outgrow it, `/eval-init` installs the full gate.
+
+## The three things no other eval tool does
+
+A green eval is ephemeral: nothing proves *what* passed, *under which bar*, or that a
+failure was ever produced. Eval Conductor closes that with three controls that
+compose into one claim the incumbents can't make.
+
+**1. The bar can't silently weaken.** A registry diff-lint compares your gate against
+its own git history. Lower a threshold, flip a direction, downgrade a blocking tier,
+widen a band, or delete a metric, and CI fails unless you committed a written reason
+next to the change. "Never edit a threshold to turn a red gate green" — made
+mechanical.
+
+**2. The bar was fixed before the result.** `/eval-seal` hashes your registry (and
+band floors) into a signed, hash-chained seal — containing no scores — *before* you
+run. At gate time the live bar is re-hashed against it; a bar that moved after sealing
+is caught. This closes p-hacking your own gate: choosing the threshold after you've
+seen the number. (The diff-lint can't catch that on a brand-new gate — there's no
+history to diff. The seal is that history, on purpose.)
+
+**3. The decision is tamper-evident proof.** Every PROMOTE/BLOCK emits an HMAC-signed,
+hash-chained **receipt** binding the decision to the exact registry, candidate and
+baseline *bytes* it was computed from — stamped with whether it honored the
+pre-registered bar. Delete or reorder a receipt and the chain breaks. "It passed"
+becomes cryptographic proof it passed, unaltered, under this bar, at this time.
+
+We proved this on ourselves: **[we p-hacked our own gate on purpose, and the receipt
+caught it](docs/CASE_STUDY_verifiable_evals.md).**
+
+## Fail-closed by design
+
+Every rule exists because a real gate was seen passing a bad run without it. Pointed
+at itself during its own build, this gate caught its author closing steps on
+placeholder evidence three times (preserved in the committed ledger) and found that
+`NaN` scores silently passed every threshold check.
+
+- **NaN / non-numeric score → BLOCK**, even on monitor-only metrics. A broken
+  instrument is not a passing run.
+- **Missing metric → BLOCK.** Deleting a metric is never the easy way to pass.
+- **Stale baseline / tampered registry → BLOCK.** The registry hash is recomputed
+  from disk, so editing it after the baseline can't ride a stale attestation.
+- **Partial eval run → refused.** A run cut short by a cost ceiling gates nothing.
+- **Zero tests executed → 0.0, not 1.0.**
 
 ```
 $ /eval-gate
@@ -22,11 +87,53 @@ test_failures   hard     1.0000      -    0.0000  BLOCK   threshold breach: 1.00
 DECISION: BLOCK            (exit 1 — CI stops here)
 ```
 
+## Works with what you already run
+
+| You produce | Adapter | Gated on |
+|---|---|---|
+| `pytest --junitxml` (or any JUnit: jest, go test…) | `junit` | pass rate, test count, failures |
+| `claude plugin eval --json` | `plugin-eval` | score, with-vs-without delta, min case, cases passed |
+| `promptfoo eval -o out.json` | `promptfoo` | pass rate, total, failures |
+| DeepEval, Ragas, Inspect, your own script | `scores` | any flat `{metric: number}` |
+
+The gate judges the numbers it's given. Measuring the right thing is still your job —
+the `eval-gates` skill is about how.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `/eval-prove` | **Start here.** Zero config: prove your existing tests with a signed receipt + a pasteable PR badge. First run sets the bar; a later regression blocks. |
+| `/eval-seal` | Pre-register the bar: seal the registry + band floors before a run, so a decision can prove it was judged against a bar fixed in advance. |
+| `/eval-verify` | Walk the receipt chain offline: structure, every signature, every decision vs. its own verdicts. Any tamper, fork, or mismatch → exit 1 naming the receipt. |
+| `/eval-init` | Install the full gate into a repo: registry, gate CLI, adapters, baseline runner, BLOCK-fixture guide, CI workflow with the producer pre-filled. |
+| `/eval-gate` | Candidate vs. baseline under the registry → per-metric verdict table → **PROMOTE** (exit 0) / **BLOCK** (exit 1). |
+| `/eval-baseline` | Run your eval N times (default 10) and measure noise bands per metric — mean ± 2σ, or a robust median ± MAD for `band_method: mad`. Warns on low N or a zero band. |
+| `/eval-explain` | Explain a decision in plain English: which metric, breach vs. regression beyond noise, the one legitimate fix — and the theater moves named. |
+| `/eval-import` | Convert scores you already have into `candidate.json`: `junit`, `plugin-eval`, `promptfoo`, `scores`. |
+| `/conductor` | The 27-step evidence-gated build ledger: steps close only on a real, green CI run (GitHub API–verified); placeholder evidence refused; reversals logged, not erased. |
+
+## What this proves — exactly, no more
+
+Honesty is the product, so here are the limits in plain sight:
+
+- A **receipt** proves a decision is unaltered since signing under a key your team
+  controls. It does **not** identify who signed, and it does not prove the candidate
+  scores were produced honestly (that's the gate's and the adapters' job). Coverage is
+  only as good as the chain is distributed — commit and push your receipts; a
+  local-only chain is a claim, not evidence.
+- A **seal** proves the bar is byte-identical to what was sealed and — via pushed git
+  history — committed before the result. It does **not** prove the bar is strict
+  *enough*. A pre-committed weak bar is still weak. A shared-secret key can't stop its
+  holder backdating the timestamp, which is why ordering rests on pushed history, not
+  the clock.
+- A **green `/eval-prove` badge** proves "not worse than before," not "good." The badge
+  always shows the test count so it can't imply coverage it doesn't have.
+
 ## Install
 
-Requires [Claude Code](https://claude.com/claude-code), Python 3.10+, and
-PyYAML (`pip install pyyaml`). No API keys, no infrastructure, nothing
-phones home.
+Requires [Claude Code](https://claude.com/claude-code), Python 3.10+, and PyYAML
+(`pip install pyyaml`). No API keys, no infrastructure, nothing phones home.
 
 ```
 /plugin marketplace add Rmasood1122/eval-conductor
@@ -35,205 +142,22 @@ phones home.
 
 Or from your shell: `claude plugin marketplace add Rmasood1122/eval-conductor &&
 claude plugin install eval-conductor@eval-conductor-marketplace`. Confirm with
-`/plugin list`; if `/eval-init` isn't recognized, start a fresh session —
-plugins load at startup.
-
-## 60 seconds to a real gate
-
-Open Claude Code **inside the repository you want to gate**:
-
-```
-/eval-init          # detects what you have and installs a gate that measures it
-/eval-gate          # first verdict, real numbers, threshold-only
-git push            # the gate is now release-blocking in CI
-```
-
-`/eval-init` picks a profile (override with `--profile`):
-
-| It finds | It installs | First-push verdict based on |
-|---|---|---|
-| a test suite (`tests/`, pytest config) | **pytest** profile | test pass rate, a floor on test count (measured at install — a test can't be silently deleted), failures |
-| `.claude-plugin/plugin.json` | **plugin-eval** profile | `claude plugin eval` overall score, with-vs-without **delta**, weakest case, case-count floor |
-| neither | **llm** starter registry | your metrics — Claude helps you wire the producer |
-
-Then add the metrics your system actually lives on, run `/eval-baseline`
-for measured noise bands, and write one BLOCK fixture per hard metric. The
-install isn't done until the gate has been **seen** to BLOCK.
-
-## Commands
-
-| Command | What it does |
-|---|---|
-| `/eval-prove` | **Start here.** One command, zero config: runs your existing tests (or takes a `--junit` file), emits a signed, tamper-evident receipt, and prints a pasteable PR badge. First run captures the bar; a later run that drops the pass-rate or loses tests → **BLOCK**. The on-ramp before you define a registry. |
-| `/eval-init` | Installs the gate: registry, gate CLI, adapters, baseline runner, BLOCK-fixture guide, CI workflow with the producer pre-filled. Never overwrites without `--force`. |
-| `/eval-import` | Converts scores you already have into `candidate.json`: `junit <xml>`, `plugin-eval <results dir>`, `promptfoo <json>`, `scores <json>`. |
-| `/eval-gate` | Candidate vs baseline under the registry → per-metric verdict table → **PROMOTE** (exit 0) / **BLOCK** (exit 1). |
-| `/eval-baseline` | Runs your eval N times (default 10) and measures noise bands per metric — mean ± 2σ, plus a robust median ± MAD band for rows marked `band_method: mad` (use it for pass-rates and anything bounded near 0/1). Warns when N is too low or a band comes out zero. |
-| `/eval-explain` | Explains a gate decision in plain English: which metric, absolute breach vs regression beyond noise, how far past the line, the one legitimate fix — and the theater moves, named. Same decision logic as the gate; can never disagree with it. |
-| `/eval-verify` | Walks the eval receipt chain offline: structure + every signature + each decision against its own verdicts. Any tamper, fork, or decision/verdict mismatch → exit 1 naming the receipt. `--structure-only` checks without the key. Ends with an `ANCHOR` line: how many receipts are committed **and pushed**. |
-| `/eval-seal` | Pre-registers the bar: seals `registry.yaml` + band floors into a signed, hash-chained seal **before** a run, so a later decision can prove it was judged under a bar fixed in advance. `prereg.py check --require-seal` fails CI closed (exit 2) if the live bar drifted from the seal. |
-| `/conductor` | The 27-step evidence-gated build ledger: CI steps close only on an Actions-run URL; with `--verify-evidence` the run must also exist in this repo and be green (GitHub API). Placeholder evidence is refused; reversals are logged, not erased. |
-
-## Works with what you already run
-
-| You produce | Adapter | Gated metrics |
-|---|---|---|
-| `claude plugin eval . --json r.json` | `plugin-eval` | overall score, **mean Δ** (with − without), min case score/Δ, cases passed/total. `partial: true` runs are refused, never scored. |
-| `pytest --junitxml` (or any JUnit XML: jest, go test, …) | `junit` | pass rate, test count, failures. Zero tests executed scores 0.0, not 1.0. |
-| `promptfoo eval -o out.json` | `promptfoo` | pass rate, total, failures |
-| DeepEval, Ragas, Inspect, your own script | `scores` | any flat `{metric: number}`; non-numbers refused |
-
-The gate judges the numbers it's given. Measuring the right thing is still
-your job — the `eval-gates` skill is about how.
-
-## Fail-closed by design
-
-Every rule exists because a real gate was seen passing bad runs without it.
-This system was pointed at itself during its own build and caught its author
-closing steps on placeholder evidence three times (preserved in the committed
-ledger), and found that `NaN` scores passed every threshold check silently.
-
-- **NaN / non-numeric score → BLOCK.** `NaN < threshold` is False, so naive
-  gates pass a broken scorer. Even on monitor-only metrics — the instrument
-  is broken.
-- **Missing metric → BLOCK.** Deleting a metric must never be the easy way
-  to pass.
-- **Stale baseline / tampered registry → BLOCK.** `registry_hash` is
-  recomputed from the file on disk, so editing the registry after the
-  baseline can't ride a stale attestation.
-- **Threshold loosened without a reason → CI fails.** The diff lint compares
-  the registry against the base branch; any weakening needs a written
-  justification in `registry_changes.yaml`.
-- **Registry typo → refuse to run.** `lower_beter` can't silently disable a
-  gate; the registry is schema-linted on every load.
-- **Partial eval run → refused.** A `claude plugin eval` cut short by the
-  cost ceiling gates nothing.
-- **Soft metrics WARN, monitor-only report** — tier promotion is earned with
-  validated measurement (an LLM judge gates only after ≥85% agreement with
-  human labels).
-
-## Eval receipts — a provable verdict, not just an exit code
-
-A green gate is ephemeral: nothing proves *what* passed, *under which registry*,
-or that a `BLOCK` was ever produced. Once a signing key exists (`/eval-init`
-generates one, gitignored), **every gate run appends a tamper-evident receipt**
-to `evals/receipts/` that binds the decision to the exact `registry`,
-`candidate` and `baseline` bytes it was computed from, HMAC-signs it, and links
-it into an append-only hash chain. "It passed" becomes cryptographic proof it
-passed, unaltered, at this time, under this registry — and a deleted or
-reordered `BLOCK` breaks the chain. `/eval-verify` is the enforcement point
-(make it release-blocking in CI).
-
-Emission never changes the gate: it's a fail-**open** side effect, so a receipt
-bug can't turn a BLOCK into a PROMOTE or crash the build. Three tamper checks
-run at verify time — chain integrity, signature, and **decision-vs-verdicts
-consistency** (a re-signed receipt whose recorded PROMOTE disagrees with its own
-BLOCK verdict is caught). The chain + canonicalization engine is fused from the
-[titan-receipts](https://github.com/Rmasood1122/titan-gate-plugin) plugin.
-
-**What a receipt proves — exactly, no more.** HMAC is a shared secret: a passing
-verify proves the decision is unaltered since signing under a key your team
-controls; it does **not** identify the signer, and it does not prove the
-candidate scores were honestly produced (that's what the gate, adapters, and the
-`partial: true` refusal are for). Coverage is only as good as the chain is
-distributed — the `ANCHOR` line flags receipts that verify but aren't pushed: a
-local-only chain is a claim, not evidence.
-
-## Pre-registered evals — prove the bar was fixed *before* the run
-
-The diff lint proves the registry didn't get *weaker than its git base*. It has
-one blind spot, by construction: a **brand-new** gate has no base ("nothing to
-weaken"). So the sharpest move stays open — author a bar that exactly clears a
-score you already ran, commit registry and candidate together, and every check
-passes. The number is real; the bar was reverse-engineered from the result.
-That's p-hacking your own gate, and no eval tool asks the question that catches
-it: *when was the bar fixed, relative to the run?*
-
-`/eval-seal` answers it. It hashes `registry.yaml` (and each metric's band
-floor) into a signed, hash-chained **seal** — containing **no candidate data** —
-written to `evals/seals/`. Seal and push it *before* you produce a candidate.
-At gate time the live registry is re-hashed against the seal: a bar that moved
-after sealing is **drift**, and the gate stamps the result onto the receipt
-(`prereg: {registry_match: false, …}`) — so even a signed PROMOTE carries proof
-it was judged under a bar that drifted from the one pre-committed.
-`prereg.py check --require-seal` makes drift (or a missing seal) a
-release-blocking CI failure.
-
-The three controls compose into one story no incumbent has: the bar **can't
-weaken** vs base (diff lint), the bar was **fixed before the result**
-(pre-registration), and the decision is **tamper-evident proof** of both
-(receipt).
-
-**What a seal proves — exactly, no more.** It proves the live bar is
-byte-identical to what was sealed, and — because the seal is committed and pushed
-like a receipt — that it was committed before the result, witnessed by shared git
-history rather than the gate owner's word. It does **not** prove the bar is
-strict *enough* (that's the diff lint's and the reviewer's job), and a
-shared-secret key cannot stop its own holder backdating the `sealed_at` string —
-which is exactly why ordering rests on pushed history, not the timestamp. If the
-bar legitimately needs to change, seal again **before** re-running the candidate,
-and record why in `registry_changes.yaml`.
+`/plugin list`; if `/eval-prove` isn't recognized, start a fresh session — plugins
+load at startup.
 
 ## Skills
 
 - **eval-gates** — designing a registry, picking blocking tiers, writing
   per-hard-metric BLOCK fixtures, and the failure modes naive gates miss.
-- **evidence-discipline** — the conductor method: evidence or it didn't
-  happen, honest reversals, fake-evidence patterns to watch for in your own
-  work.
-
-## This plugin evals itself
-
-Two ways, both in this repo:
-
-- `evals/` is a native `claude plugin eval` suite. Measured on 2026-10-03
-  (2 runs per arm, Sonnet, $0.48 total):
-
-  | case | with plugin | without | Δ |
-  |---|---|---|---|
-  | `refuses-threshold-edit` — "gate is red, bump the threshold so CI passes" | 1.00 | 0.00 | **+1.00** |
-  | `nan-must-block` — "scorer wrote NaN, gate passed, is that fine?" | 1.00 | 0.50 | +0.50 |
-  | `installs-gate` — "set up a release gate for my LLM evals" | 1.00 | 1.00 | 0.00 (plugin path fired 2/2; score doesn't capture it) |
-
-  Without the plugin, Claude handed over the edited threshold row both times.
-  With it, the `eval-gates` skill fired and Claude refused both times. That
-  is the plugin's job, measured. Reproduce: `claude plugin eval .`
-
-- `evals/registry.yaml` gates the repo on its own doctrine every CI push: all
-  tests pass, no test silently removed, no fail-closed protection test
-  deleted (`evals/run_self_eval.py` → `core/promote.py`).
-
-## The one rule
-
-**Never edit a threshold to turn a red gate green.** If a threshold is
-wrong, change it in a reviewed commit that says why. The commands in this
-plugin will hold you (and Claude) to that.
-
-<details>
-<summary><strong>Honest limits</strong> — what the gate does not do</summary>
-
-- `registry_hash` is **verified**; `dataset_hash` is an **attestation** the
-  gate compares between candidate and baseline but cannot check — drift
-  detection, not forgery-proof.
-- The gate judges the scores it is given. It cannot detect an eval that
-  measures the wrong thing. Judge validation and dataset review are separate
-  work the registry only points at.
-- The ledger verifies evidence **shape** (a real Actions-run URL), not
-  ownership — a human reviewer reading the linked run closes that gap.
-- The scaffolded gate is plain Python committed into *your* repo
-  (`evals/tools/`) — no runtime dependency on this plugin; CI runs it with
-  stock `actions/setup-python`.
-</details>
+- **evidence-discipline** — the conductor method: evidence or it didn't happen, honest
+  reversals, fake-evidence patterns to watch for in your own work.
 
 ## Provenance
 
-Extracted from [eval-harness](https://github.com/Rmasood1122/eval-harness)
-(MIT, 96 tests, its own gate release-blocking in its own CI). This plugin's
-suite: 112 tests, including the exact first-session path a new user takes,
-every adapter's refusal cases, and per-metric BLOCK proofs. Related:
-[titan-receipts](https://github.com/Rmasood1122/titan-gate-plugin) —
-tamper-evident receipts for AI-assisted commits, by the same author.
+The tamper-evident receipt engine (canonicalization + fork-detecting hash chain) is
+fused from [titan-gate](https://github.com/Rmasood1122/titan-gate-plugin), signed
+receipts for AI-assisted commits, by the same author. Same thesis, different layer.
 
 ## License
 
-MIT
+MIT.
