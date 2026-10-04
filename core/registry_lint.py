@@ -40,8 +40,9 @@ PILLARS = {"quality", "safety", "ops"}
 
 REQUIRED_KEYS = {"name", "level", "pillar", "method", "detects",
                  "direction", "threshold", "noise_band", "blocking", "online"}
-OPTIONAL_KEYS = {"judge_prompt"}
+OPTIONAL_KEYS = {"judge_prompt", "band_method"}
 ALLOWED_KEYS = REQUIRED_KEYS | OPTIONAL_KEYS
+BAND_METHODS = {"sigma", "mad"}
 
 
 def _is_number(v: object) -> bool:
@@ -102,6 +103,9 @@ def lint_registry(rows: object) -> list[str]:
             errors.append(f"{where}: online must be a bool, got {row['online']!r}")
         if "judge_prompt" in row and row.get("method") != "llm_judge":
             errors.append(f"{where}: judge_prompt only allowed on llm_judge rows")
+        if "band_method" in row and row["band_method"] not in BAND_METHODS:
+            errors.append(f"{where}: band_method={row['band_method']!r} not in "
+                          f"{sorted(BAND_METHODS)}")
     return errors
 
 
