@@ -1,0 +1,21 @@
+# EXAMPLE — reference only. This is NOT an active workflow in this repo.
+# Copy it into a DOWNSTREAM repo's .github/workflows/ to gate that repo's PRs.
+# Requires the `v1` release tag to exist (publish the Action first), otherwise
+# `uses: Rmasood1122/eval-conductor@v1` cannot resolve.
+name: Eval gate
+on: [pull_request]
+
+jobs:
+  prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # install the project's own test deps first, e.g.:
+      # - run: pip install -e ".[test]"
+      - name: Prove tests didn't regress
+        uses: Rmasood1122/eval-conductor@v1
+        with:
+          command: prove
+          args: '--run "pytest --junitxml={junit}"'
+          receipt-key: ${{ secrets.EVAL_RECEIPT_KEY }}
+      # Commit evals/receipts/ back on push to keep the chain as durable evidence.

@@ -15,3 +15,9 @@ evals/.receipt-key
 evals/.wedge-baseline.json
 evals/.eval-prove-junit.xml
 .eval-prove-junit.xml
+
+# Python build metadata
+*.egg-info/
+build/
+dist/
+__pycache__/

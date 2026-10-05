@@ -1,0 +1,111 @@
+# conductor/steps.yaml — the 27-step corpus as machine data (source: docs/EVAL_27_STEPS_TOOLMAP.md)
+# evidence_kind: what closes the step (recorded verbatim; audit requires non-empty).
+# never_na: T05 and T27 can never be dispositioned away (doctrine).
+- {step: 1,  t: T04, phase: I,   week_one: true,  name: "Error analysis on real data",
+   tools: "20-50 REAL inputs + notebook + eyes (Langfuse if traces exist)",
+   exit: "FM list with >=10 entries, every S1 named", evidence_kind: file,
+   common_fake: "Inventing FMs from imagination instead of observed outputs"}
+- {step: 2,  t: T08, phase: I,   week_one: true,  name: "Golden-set/regression gate",
+   tools: "eval-harness: registry.yaml -> baseline -> compare.decide -> gate",
+   exit: "eval_gate runs locally, DECISION table prints, rows cite FM ids", evidence_kind: run,
+   common_fake: "Registry rows without failure-mode citations (orphan metrics)"}
+- {step: 3,  t: T01, phase: I,   week_one: true,  name: "Unit/function floor",
+   tools: "pytest + mypy --strict + pre-commit hooks",
+   exit: "hard-block hooks live in pre-commit AND CI", evidence_kind: ci,
+   common_fake: "Tests exist but hooks not wired as hard blocks"}
+- {step: 4,  t: T12, phase: I,   week_one: true,  name: "Property-based invariants",
+   tools: "Hypothesis (MIT)",
+   exit: ">=1 invariant per parser/aggregator, suite green", evidence_kind: run,
+   common_fake: "One trivial property on one function, declared done"}
+- {step: 5,  t: T05, phase: I,   week_one: true,  never_na: true, name: "Instrument: prove the gate can BLOCK",
+   tools: "BUILD-OWN: IE-01 round-trip pattern (test_ie01_roundtrip.py template)",
+   exit: "CI job where gate is SEEN blocking: healthy fixture exit 0, one degraded fixture PER hard metric exit 1", evidence_kind: ci,
+   common_fake: "Local pytest pass offered as proof; no CI run where a degraded fixture is red"}
+- {step: 6,  t: T03, phase: I,   week_one: true,  name: "Integration round-trips",
+   tools: "pytest subprocess round-trips on REAL files",
+   exit: "every producer->consumer edge has a round-trip test in CI", evidence_kind: ci,
+   common_fake: "Hand-built dicts instead of the producer's actual output file"}
+- {step: 7,  t: T02, phase: II,  name: "Component isolation metrics",
+   tools: "pytest + labeled JSONL; scikit-learn per-class metrics",
+   exit: "each component measured in isolation; guilty component identifiable in one run", evidence_kind: report,
+   common_fake: "Aggregate accuracy hiding the failing class"}
+- {step: 8,  t: T16, phase: II,  name: "Retrieval recall@k / MRR",
+   tools: "own 30-line script or ranx/pytrec_eval; Ragas only where no ideal-passage goldens",
+   exit: "goldens keyed {question, ideal_passage}, n stated, saturation flagged", evidence_kind: report,
+   common_fake: "Goldens keyed by chunk IDs (break on re-chunking)"}
+- {step: 9,  t: T15, phase: II,  name: "Faithfulness: deterministic form first",
+   tools: "BUILD-OWN verbatim verification (verify_citations.py pattern); DeepEval/Ragas judge-form for residue only",
+   exit: "zero unverifiable citations can ship; judge-form gates nothing yet", evidence_kind: ci,
+   common_fake: "A judge checking what verbatim string-matching could prove"}
+- {step: 10, t: T19, phase: II,  name: "Safety/policy: statutory programmatic",
+   tools: "own statutory/banned-claims checks + Microsoft Presidio PII/PHI lint",
+   exit: "threshold-0 hard rows live; PHI cannot reach git or logs", evidence_kind: ci,
+   common_fake: "An LLM judging legal/statutory elements"}
+- {step: 11, t: T11, phase: II,  name: "Pairwise prompt loop",
+   tools: "promptfoo side-by-side; both orderings for judged pairwise",
+   exit: "variant decisions on fixed dev slice; release gate untouched by preference scores", evidence_kind: report,
+   common_fake: "Single-ordering judged pairwise (position bias)"}
+- {step: 12, t: T17, phase: III, name: "Determinism proven cross-platform",
+   tools: "BUILD-OWN: sha256 pins + dual-platform CI job (IE-09)",
+   exit: "identical hash sets on 2 platforms, or band-0 claim suspended in registry", evidence_kind: ci,
+   common_fake: "Single-host byte-identity presented as cross-machine proof"}
+- {step: 13, t: T18, phase: III, name: "Performance distributions",
+   tools: "pytest-benchmark; locust or k6 for load",
+   exit: "P50/P95/P99 + cost vs a manifest-matched baseline", evidence_kind: report,
+   common_fake: "Averages quoted; demo baseline gating real candidates"}
+- {step: 14, t: T13, phase: III, name: "Red-team the product",
+   tools: "promptfoo red-team packs / garak (LLM); per-FM hand probes (deterministic)",
+   exit: "attack cases in battery with xfail semantics; benign-control refusal rate tracked", evidence_kind: report,
+   common_fake: "Attack set with no benign controls and no seeded known-bads"}
+- {step: 15, t: T14, phase: III, name: "Robustness/perturbation",
+   tools: "own fixture variants; nlpaug at scale",
+   exit: "graceful-degradation curve; cliffs (>10pt) filed as FMs", evidence_kind: report,
+   common_fake: "Only clean inputs ever tested"}
+- {step: 16, t: T20, phase: III, name: "Security scanners + eval surface",
+   tools: "bandit + gitleaks + pip-audit + semgrep; IE-06 registry-edit lint",
+   exit: "four scanners green in CI; threshold edits require justification", evidence_kind: ci,
+   common_fake: "Scanners run once locally, never wired into CI"}
+- {step: 17, t: T23, phase: III, name: "Agentic/long-horizon",
+   tools: "Inspect AI: pass^k (k>=4), loop detection, injected failures",
+   exit: "no autonomous side effect reachable through a failed gate (hard at unit AND system)", evidence_kind: ci,
+   common_fake: "Happy-path agent demo; side-effect path only soft-blocked"}
+- {step: 18, t: T09, phase: IV,  name: "Blinded human rubric labels",
+   tools: "Argilla or Label Studio; qualified non-author labeler",
+   exit: "30-50 frozen, versioned labels", evidence_kind: labels,
+   common_fake: "Author labels their own outputs, unblinded"}
+- {step: 19, t: T10, phase: IV,  name: "LLM judge, validated",
+   tools: "DeepEval G-Eval scaffold; OUR kappa gate",
+   exit: "kappa>=0.6 (or >=85%) vs step-18 labels -> frozen+versioned, enters registry SOFT; else monitor_only", evidence_kind: report,
+   common_fake: "Judge gating anything before validation; judge entering as hard"}
+- {step: 20, t: T22, phase: IV,  name: "Fairness strata",
+   tools: "own per-stratum pass-rate report; Fairlearn later",
+   exit: "per-stratum table in every battery report", evidence_kind: report,
+   common_fake: "Aggregate green while one subgroup collapses, unreported"}
+- {step: 21, t: T24, phase: V,   name: "Benchmark (filter-only)",
+   tools: "lm-evaluation-harness",
+   exit: "model choice documented with contamination caveat; zero benchmark numbers in product claims", evidence_kind: file,
+   common_fake: "Benchmark score quoted as product quality"}
+- {step: 22, t: T06, phase: V,   name: "Application/fail-closed surface",
+   tools: "Playwright (UI) / CI-as-application incl. IE-10 WARN surfacing",
+   exit: "every soft warning reaches a human surface; missing inputs fail closed", evidence_kind: ci,
+   common_fake: "WARN visible only inside a green CI log"}
+- {step: 23, t: T27, phase: V,   never_na: true, name: "Meta-eval E-0",
+   tools: "BUILD-OWN process: fresh-context review, author disqualified; quarterly Goodhart + judge calendar",
+   exit: "independent review filed with zero unaddressed S1s; calendar created", evidence_kind: file,
+   common_fake: "Author session grading its own work and calling it E-0"}
+- {step: 24, t: T26, phase: V,   name: "Shadow vs incumbent",
+   tools: "BUILD-OWN thin side-by-side + blinded pairwise",
+   exit: "promotion criteria committed BEFORE shadow start; decision made by those criteria", evidence_kind: file,
+   common_fake: "Criteria written (or bent) after seeing shadow results"}
+- {step: 25, t: T25, phase: VI,  name: "HITL review auditing",
+   tools: "BUILD-OWN: edit-rate, review-time, rubber-stamp flag on the approval surface",
+   exit: "reviewer metrics in weekly report from day one of review", evidence_kind: report,
+   common_fake: "'A human approves' claimed with zero reviewer metrics"}
+- {step: 26, t: T07, phase: VI,  name: "Online eval + flywheel",
+   tools: "Langfuse self-hosted; reference-free, judge-version-matched; weekly ritual",
+   exit: "a production failure becomes a permanent regression test within one week", evidence_kind: report,
+   common_fake: "Dashboards watched, failures never turned into goldens"}
+- {step: 27, t: T21, phase: VI,  name: "Calibration vs outcomes",
+   tools: "BUILD-OWN: pandas join + sklearn calibration_curve at >=50 outcomes",
+   exit: "calibration curve, or every predictive score prints 'unmeasured'", evidence_kind: report,
+   common_fake: "Confident score displayed with zero outcome data"}

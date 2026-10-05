@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eval-conductor"
+version = "1.4.0"
+description = "The integrity layer for your evals: fail-closed release gates with signed, tamper-evident, pre-registered receipts — for pytest, promptfoo, claude plugin eval, or any scores. Runs in any CI, no AI agent required."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Rehan Masood", email = "rmasood524@gmail.com" }]
+keywords = [
+    "evals", "llm-evaluation", "release-gate", "regression-testing", "ci",
+    "quality", "eval-driven-development", "promptfoo", "junit", "pytest",
+    "fail-closed", "ai-governance", "tamper-evident", "receipts",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = ["PyYAML>=5.1"]
+
+[project.optional-dependencies]
+# Pinned to mcp 1.x: the stable FastMCP API. mcp 2.x renamed FastMCP->MCPServer
+# and changed APIs; a 2.x port is a later task. Pinning keeps this working today.
+mcp = ["mcp>=1.0,<2"]
+
+[project.urls]
+Homepage = "https://github.com/Rmasood1122/eval-conductor"
+Repository = "https://github.com/Rmasood1122/eval-conductor"
+Issues = "https://github.com/Rmasood1122/eval-conductor/issues"
+
+[project.scripts]
+eval-conductor = "eval_conductor.cli:main"
+eval-conductor-mcp = "eval_conductor.mcp_server:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+eval_conductor = ["_core/*.yaml"]
