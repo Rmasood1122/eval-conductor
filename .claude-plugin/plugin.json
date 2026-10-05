@@ -28,5 +28,19 @@
   "icon": "./.claude-plugin/icon.svg",
   "supportUrl": "https://github.com/Rmasood1122/eval-conductor/issues",
   "documentationUrl": "https://github.com/Rmasood1122/eval-conductor#readme",
-  "privacyPolicyUrl": "https://github.com/Rmasood1122/eval-conductor/blob/main/PRIVACY.md"
+  "privacyPolicyUrl": "https://github.com/Rmasood1122/eval-conductor/blob/main/PRIVACY.md",
+  "userConfig": {
+    "receipt_key": {
+      "type": "string",
+      "title": "Eval receipt signing key (optional)",
+      "description": "Hex HMAC key used to sign eval receipts. Leave empty and /eval-init generates one for you, stored gitignored at evals/.receipt-key. Set it here only to reuse a specific key (e.g. to match a CI secret). In CI, supply it as the EVAL_RECEIPT_KEY secret instead.",
+      "sensitive": true
+    },
+    "github_token": {
+      "type": "string",
+      "title": "GitHub token (optional)",
+      "description": "Only used by /conductor --verify-evidence to confirm one of your own CI runs via the GitHub API; anonymous access works for public repos. In CI, the Actions-provided GITHUB_TOKEN is used automatically.",
+      "sensitive": true
+    }
+  }
 }
