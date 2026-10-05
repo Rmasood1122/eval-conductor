@@ -1,5 +1,7 @@
-# Example consumer workflow — copy into a DOWNSTREAM repo's .github/workflows/.
-# Proves the test suite on every PR and blocks the merge on a regression.
+# EXAMPLE — reference only. This is NOT an active workflow in this repo.
+# Copy it into a DOWNSTREAM repo's .github/workflows/ to gate that repo's PRs.
+# Requires the `v1` release tag to exist (publish the Action first), otherwise
+# `uses: Rmasood1122/eval-conductor@v1` cannot resolve.
 name: Eval gate
 on: [pull_request]
 
