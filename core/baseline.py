@@ -102,6 +102,9 @@ def collect_from_cmd(cmd: str, runs: int, candidate: Path) -> list[dict]:
     outs = []
     for i in range(runs):
         print(f"[baseline] run {i + 1}/{runs}: {cmd}")
+        # SECURITY: shell=True runs ONLY the command the user passed explicitly
+        # via --cmd. It is never built from network input or untrusted data —
+        # same trust level as a build/test command the user runs by hand.
         r = subprocess.run(cmd, shell=True)
         if r.returncode != 0:
             raise SystemExit(f"FAIL: eval command exited {r.returncode} on run {i + 1}")

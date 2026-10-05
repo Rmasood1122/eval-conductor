@@ -8,3 +8,10 @@ evals/baseline.json
 # claude plugin eval runs (local; never committed)
 evals/results/
 evals/junit.xml
+
+# credentials + wedge/receipt artifacts (never committed — defense in depth,
+# in case a tool is run inside this repo during development)
+evals/.receipt-key
+evals/.wedge-baseline.json
+evals/.eval-prove-junit.xml
+.eval-prove-junit.xml
