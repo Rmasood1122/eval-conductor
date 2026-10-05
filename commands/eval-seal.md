@@ -6,11 +6,10 @@ argument-hint: "[--registry PATH] [--seals-dir DIR] [--note TEXT] [--no-bands]"
 Seal the current eval bar in the user's repository, as a pre-registration:
 
 ```
-python3 evals/tools/prereg.py seal $ARGUMENTS
+TOOL="evals/tools/prereg.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/prereg.py"; python3 "$TOOL" seal $ARGUMENTS
 ```
 
-(If `evals/tools/prereg.py` doesn't exist, pre-registration isn't installed —
-offer `/eval-init` instead of improvising.)
+(Runs from the installed plugin, but sealing needs a registry: if `evals/registry.yaml` doesn't exist yet, run `/eval-init` first, then re-run this.)
 
 What this does and why it matters:
 
@@ -49,5 +48,5 @@ Honest limits (state them; do not oversell):
 To enforce in CI, add the drift check as a release-blocking step:
 
 ```
-python3 evals/tools/prereg.py check --require-seal
+TOOL="evals/tools/prereg.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/prereg.py"; python3 "$TOOL" check --require-seal
 ```

@@ -6,11 +6,10 @@ argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
 Explain the most recent gate decision in the user's repository:
 
 ```
-python3 evals/tools/explain.py $ARGUMENTS
+TOOL="evals/tools/explain.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/explain.py"; python3 "$TOOL" $ARGUMENTS
 ```
 
-(If `evals/tools/explain.py` doesn't exist, the gate isn't installed or is an
-older install — offer `/eval-init --force` to refresh the vendored tools.)
+(Runs from the installed plugin — no `/eval-init` needed. Explains the latest gate decision if one exists; prefers a vendored copy, else the plugin's own.)
 
 This runs the SAME decision logic as `/eval-gate`, so it can never disagree
 with the gate — it only adds the diagnosis. Relay it faithfully:

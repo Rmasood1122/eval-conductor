@@ -6,11 +6,10 @@ argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
 Run the release gate in the user's repository:
 
 ```
-python3 evals/tools/promote.py $ARGUMENTS
+TOOL="evals/tools/promote.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/promote.py"; python3 "$TOOL" $ARGUMENTS
 ```
 
-(If `evals/tools/promote.py` doesn't exist, the gate isn't installed — offer
-`/eval-init` instead of improvising.)
+(Runs from the installed plugin, but the gate needs a registry: if `evals/registry.yaml` doesn't exist yet, run `/eval-init` first to create one, then re-run this.)
 
 Interpret the result for the user honestly:
 

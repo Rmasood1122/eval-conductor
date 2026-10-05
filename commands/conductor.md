@@ -7,10 +7,10 @@ Operate the conductor — the 27-step eval build method as an enforcing CLI.
 State lives in `evals/conductor_state.json` and is committed like code.
 
 ```
-python3 evals/tools/conductor.py $ARGUMENTS
+TOOL="evals/tools/conductor.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/conductor.py"; python3 "$TOOL" $ARGUMENTS
 ```
 
-(If not installed: `/eval-init --conductor --project NAME --archetype A2`.)
+(Runs from the installed plugin. `conductor init` (or `/eval-init --conductor --project NAME --archetype A2`) creates the ledger state in `evals/conductor_state.json` if it doesn't exist yet.)
 
 Doctrine the CLI enforces — explain, don't work around:
 

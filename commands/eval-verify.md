@@ -6,11 +6,10 @@ argument-hint: "[--receipts-dir DIR] [--registry PATH] [--structure-only]"
 Verify the tamper-evident eval receipt log in the user's repository:
 
 ```
-python3 evals/tools/eval_receipt.py verify $ARGUMENTS
+TOOL="evals/tools/eval_receipt.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/eval_receipt.py"; python3 "$TOOL" verify $ARGUMENTS
 ```
 
-(If `evals/tools/eval_receipt.py` doesn't exist, receipts aren't installed —
-offer `/eval-init` instead of improvising.)
+(Runs from the installed plugin — no `/eval-init` needed. Verifies whatever receipts exist under `evals/receipts/` (e.g. from `/eval-prove`); says so if none do.)
 
 Interpret the result honestly:
 
