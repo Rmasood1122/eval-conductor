@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "eval-conductor": {
+      "command": "eval-conductor-mcp"
+    }
+  }
+}

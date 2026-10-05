@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "eval-conductor",
+  "version": "1.4.0",
+  "description": "Prove your tests/evals didn't regress. Fail-closed release gate for scores you already produce (pytest, promptfoo, JUnit, any JSON) with signed, tamper-evident, pre-registered receipts. Gate via MCP tools; design gates via skills.",
+  "author": {
+    "name": "Rehan Masood",
+    "email": "rmasood524@gmail.com",
+    "url": "https://github.com/Rmasood1122"
+  },
+  "homepage": "https://github.com/Rmasood1122/eval-conductor",
+  "repository": "https://github.com/Rmasood1122/eval-conductor",
+  "license": "MIT",
+  "keywords": [
+    "evals", "release-gate", "regression-testing", "ci", "fail-closed",
+    "ai-governance", "tamper-evident", "receipts", "promptfoo", "pytest"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "icon": "./icon.svg",
+        "color": "#1f9d55"
+      }
+    }
+  }
+}
