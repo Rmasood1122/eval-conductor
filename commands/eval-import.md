@@ -6,12 +6,10 @@ argument-hint: "junit <report.xml> | plugin-eval <evals/results/ or aggregate-re
 Turn existing eval output into a gateable candidate:
 
 ```
-python3 evals/tools/adapters.py $ARGUMENTS
+TOOL="evals/tools/adapters.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/adapters.py"; python3 "$TOOL" $ARGUMENTS
 ```
 
-(If `evals/tools/adapters.py` doesn't exist, the gate isn't installed — offer
-`/eval-init`. If it exists but is older than this plugin's `core/adapters.py`,
-offer to copy the new one in.)
+(Runs from the installed plugin — no `/eval-init` needed. Prefers a vendored `evals/tools/adapters.py` if present, else the plugin's own copy.)
 
 Which adapter:
 

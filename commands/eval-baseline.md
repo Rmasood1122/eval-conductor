@@ -6,7 +6,7 @@ argument-hint: "--cmd \"<eval command>\" [--runs 3] | --from \"evals/runs/*.json
 Build the baseline the gate compares against:
 
 ```
-python3 evals/tools/baseline.py $ARGUMENTS
+TOOL="evals/tools/baseline.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/baseline.py"; python3 "$TOOL" $ARGUMENTS
 ```
 
 Rules to hold the user to (they exist because shortcuts here produce fake
