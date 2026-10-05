@@ -177,6 +177,14 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
     except AdapterError as exc:
         raise WedgeUnmeasured(str(exc))
 
+    # 2b. zero collected tests is not a proof. A run that measured nothing must
+    # fail closed (CANNOT PROVE), never emit a brightgreen "PROVEN 0/0" badge.
+    if scores.get("test_count", 0) == 0:
+        raise WedgeUnmeasured(
+            "zero tests were collected or executed — a run that measured nothing "
+            "proves nothing. Check your test discovery (e.g. functions must be "
+            "named test_*), or pass results with --junit / --run.")
+
     # 3. gate (capture-then-gate)
     baseline = None
     if baseline_file.exists():
@@ -184,6 +192,17 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
             baseline = json.loads(baseline_file.read_text())
         except (json.JSONDecodeError, OSError):
             baseline = None
+    # The bar also lives in the signed, tamper-evident receipts. If the local
+    # baseline file is missing (deleted, or a fresh clone), rebuild the bar from
+    # the receipt chain so deleting evals/.wedge-baseline.json cannot launder a
+    # regression into a "first run". A genuine first run (no receipts yet) still
+    # captures cleanly. To lower the bar deliberately, pin it with --min-pass-rate.
+    bar_from_receipts = False
+    if baseline is None:
+        recovered = _bar_from_receipts(receipts_dir)
+        if recovered is not None:
+            baseline = recovered
+            bar_from_receipts = True
     registry = _registry_from_baseline(baseline, min_pass_rate)
     if registry:
         decision, verdicts = decide(registry, scores, None)
@@ -218,7 +237,47 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
         "receipt_path": str(receipt_path) if receipt_path else None,
         "badge": _badge(decision, scores),
         "first_run": baseline is None,
+        "bar_from_receipts": bar_from_receipts,
     }
+
+
+def _bar_from_receipts(receipts_dir) -> dict | None:
+    """Reconstruct the ratcheted bar from prior eval-prove PROMOTE receipts.
+
+    The bar is the high-water mark (max pass-rate, max test-count) across past
+    PROMOTE receipts — the same value the local .wedge-baseline.json would hold.
+    Because it comes from the signed, hash-chained receipts, deleting the local
+    baseline file cannot reset it. Returns {test_pass_rate, test_count} or None
+    when there is genuinely no prior proof. Never raises."""
+    rdir = Path(receipts_dir)
+    if not rdir.exists():
+        return None
+    best_rate = best_count = None
+    try:
+        paths = list(rdir.rglob("*.json"))
+    except OSError:
+        return None
+    for p in paths:
+        try:
+            r = json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if r.get("decision") != "PROMOTE":
+            continue
+        man = r.get("manifest") or {}
+        if man.get("source") != "eval-prove":
+            continue
+        sc = man.get("scores") or {}
+        pr, tc = sc.get("test_pass_rate"), sc.get("test_count")
+        if not isinstance(pr, (int, float)) or isinstance(pr, bool):
+            continue
+        if not isinstance(tc, (int, float)) or isinstance(tc, bool):
+            continue
+        best_rate = pr if best_rate is None else max(best_rate, pr)
+        best_count = tc if best_count is None else max(best_count, tc)
+    if best_rate is None:
+        return None
+    return {"test_pass_rate": float(best_rate), "test_count": float(best_count)}
 
 
 class WedgeUnmeasured(Exception):
@@ -251,6 +310,10 @@ def _print_result(res: dict) -> None:
         for v in res["verdicts"]:
             if v["status"] == "BLOCK":
                 print(f"  - {v['metric']}: {v['reason']}", file=sys.stderr)
+    if res.get("bar_from_receipts"):
+        print("(bar recovered from signed receipts — the local baseline file was "
+              "missing. Deleting it does not reset the bar; pin a lower floor "
+              "deliberately with --min-pass-rate.)", file=sys.stderr)
     if res["receipt_path"]:
         rid = Path(res["receipt_path"]).stem
         print(f"receipt: {rid[:12]}…  ({res['receipt_path']})")

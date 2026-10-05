@@ -17,7 +17,7 @@ _CORE = Path(__file__).resolve().parent / "_core"
 if str(_CORE) not in sys.path:
     sys.path.insert(0, str(_CORE))
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 # (subcommand) -> (core module name, fixed leading args prepended to the user's)
 # The core modules are imported lazily inside dispatch() so that `--help` and a

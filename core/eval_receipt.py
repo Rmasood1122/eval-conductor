@@ -6,8 +6,11 @@ alongside this file) into eval-conductor's promote gate. Each PROMOTE/BLOCK
 appends a receipt that binds the decision to the exact registry, candidate and
 baseline BYTES it was computed from, HMAC-signs it, and links it into an
 append-only chain. "It passed" becomes cryptographic proof it passed,
-unaltered, at this time, under this registry — and a deleted or reordered BLOCK
-breaks the chain.
+unaltered, at this time, under this registry — and an altered or reordered
+receipt, or one removed from the middle, breaks the chain. Removing the latest
+receipt leaves a shorter valid chain; that truncation is caught by DISTRIBUTION,
+not the hash link (see `_anchor_status` / the ANCHOR report): once receipts are
+committed and pushed, git history and every clone hold the fuller chain.
 
 Design contract:
   - Emission is a best-effort SIDE EFFECT. It never raises to the gate and never

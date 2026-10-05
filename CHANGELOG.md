@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.4.1 — 2026-10-05
+
+Wedge hardening + an honest-limits correction, from deep adversarial testing. The
+core gate was unaffected (NaN/Inf/string/bool scores, missing metrics, seal
+p-hacking and receipt tampering all already BLOCK/caught); every fix below is in
+the zero-config wedge path or its docs.
+
+- **Deleting `evals/.wedge-baseline.json` no longer resets the bar.** The bar is
+  reconstructed from the signed, hash-chained receipts (prior PROMOTE
+  `manifest.scores`) when the local file is missing, so it can't be deleted to
+  launder a regression into a "first run". Pin a lower floor deliberately with
+  `--min-pass-rate`.
+- **Zero collected tests → CANNOT PROVE (exit 2)**, instead of a brightgreen
+  "PROVEN 0/0" badge. The scorer's "0.0 not 1.0" contract is unchanged.
+- **Corrected a receipt overclaim.** "Delete or reorder a receipt and the chain
+  breaks" is true for tamper/reorder/middle-deletion; removing the *latest*
+  receipt leaves a shorter valid chain, caught by distribution (push) — which the
+  code already enforces via the ANCHOR report. Docs now say exactly that.
+- **Malformed candidate/baseline JSON → clean FAIL (exit 2)**, not a raw
+  traceback.
+- Tests: 254 passing (added baseline-deletion, zero-tests, and `--min-pass-rate`
+  cases).
+
 ## 1.4.0 — 2026-10-04
 
 Zero-config wedge: `/eval-prove` — one command, a signed proof of your tests.

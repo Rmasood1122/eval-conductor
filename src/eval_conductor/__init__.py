@@ -9,4 +9,4 @@ and exposes it as a standalone CLI (`eval-conductor`) so it runs in any CI
 pipeline with no AI agent required.
 """
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"

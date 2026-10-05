@@ -57,8 +57,12 @@ history to diff. The seal is that history, on purpose.)
 **3. The decision is tamper-evident proof.** Every PROMOTE/BLOCK emits an HMAC-signed,
 hash-chained **receipt** binding the decision to the exact registry, candidate and
 baseline *bytes* it was computed from — stamped with whether it honored the
-pre-registered bar. Delete or reorder a receipt and the chain breaks. "It passed"
-becomes cryptographic proof it passed, unaltered, under this bar, at this time.
+pre-registered bar. Alter or reorder a receipt, or remove one from the middle, and
+the chain breaks. Removing the *latest* receipt leaves a shorter valid chain — that
+case is caught not by the hash link but by distribution: commit and push your
+receipts and every clone (and your git history) holds the fuller chain, so a
+truncation is visible. "It passed" becomes cryptographic proof it passed, unaltered,
+under this bar, at this time.
 
 We proved this on ourselves: **[we p-hacked our own gate on purpose, and the receipt
 caught it](docs/CASE_STUDY_verifiable_evals.md).**
@@ -76,7 +80,8 @@ placeholder evidence three times (preserved in the committed ledger) and found t
 - **Stale baseline / tampered registry → BLOCK.** The registry hash is recomputed
   from disk, so editing it after the baseline can't ride a stale attestation.
 - **Partial eval run → refused.** A run cut short by a cost ceiling gates nothing.
-- **Zero tests executed → 0.0, not 1.0.**
+- **Zero tests executed → 0.0, not 1.0** in the gate; and `/eval-prove` refuses
+  it outright (CANNOT PROVE) — a run that measured nothing is never a green badge.
 
 ```
 $ /eval-gate

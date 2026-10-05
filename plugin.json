@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "eval-conductor",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Prove your tests/evals didn't regress. Fail-closed release gate for scores you already produce (pytest, promptfoo, JUnit, any JSON) with signed, tamper-evident, pre-registered receipts. Gate via MCP tools; design gates via skills.",
   "author": {
     "name": "Rehan Masood",

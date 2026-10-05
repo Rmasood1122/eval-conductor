@@ -132,7 +132,12 @@ def main(argv: list[str] | None = None) -> int:
     baseline = None
     bp = Path(args.baseline)
     if bp.exists():
-        baseline = json.loads(bp.read_text())
+        try:
+            baseline = json.loads(bp.read_text())
+        except json.JSONDecodeError as exc:
+            print(f"FAIL: baseline {bp} is not valid JSON ({exc}) — regenerate it "
+                  f"with the baseline runner", file=sys.stderr)
+            return 2
     else:
         print("WARNING: no baseline found — gating on thresholds only. "
               "Run the baseline runner before trusting this gate.")
@@ -142,7 +147,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FAIL: candidate not found: {cp} — your eval run must write it "
               f"(see evals/candidate.example.json)", file=sys.stderr)
         return 2
-    raw = json.loads(cp.read_text())
+    try:
+        raw = json.loads(cp.read_text())
+    except json.JSONDecodeError as exc:
+        print(f"FAIL: candidate {cp} is not valid JSON ({exc}) — your eval run "
+              f"must write a well-formed JSON file (see evals/candidate.example.json)",
+              file=sys.stderr)
+        return 2
     try:
         scores = extract_scores(raw, args.candidate)
     except ValueError as exc:
