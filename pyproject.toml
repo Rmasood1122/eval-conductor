@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eval-conductor"
-version = "1.4.0"
+version = "1.4.1"
 description = "The integrity layer for your evals: fail-closed release gates with signed, tamper-evident, pre-registered receipts — for pytest, promptfoo, claude plugin eval, or any scores. Runs in any CI, no AI agent required."
 readme = "README.md"
 requires-python = ">=3.10"
