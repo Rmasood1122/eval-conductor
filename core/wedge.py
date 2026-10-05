@@ -81,6 +81,11 @@ def run_pytest(work_dir: Path, run_cmd: str | None) -> Path | None:
         # The user's command must write JUnit to this path; we tell them where.
         cmd = run_cmd.replace("{junit}", str(out))
         try:
+            # SECURITY: shell=True runs ONLY the command the user passed
+            # explicitly via --run (e.g. "pytest --junitxml={junit}"). It is
+            # never built from network input, file contents, or any untrusted
+            # source — identical trust level to a Makefile target the user runs
+            # themselves. The timeout bounds a runaway command.
             subprocess.run(cmd, cwd=work_dir, shell=True, timeout=1800)
         except (OSError, subprocess.TimeoutExpired):
             return None
