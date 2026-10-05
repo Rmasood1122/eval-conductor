@@ -69,10 +69,43 @@ def test_first_run_with_failures_does_not_false_block(tmp_path):
     assert bl["test_pass_rate"] == 0.8
 
 
-def test_zero_tests_is_zero_rate(tmp_path):
-    j = _junit(tmp_path, tests=0)
-    res = _run(tmp_path, j)
-    assert res["scores"]["test_pass_rate"] == 0.0
+def test_zero_tests_is_zero_rate_in_scorer():
+    """The scorer still reports 0.0 (not 1.0) for an empty run — the fail-closed
+    scoring contract. (The wedge layer refuses it outright; see below.)"""
+    from adapters import junit_scores  # noqa: PLC0415
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        p = Path(d) / "j.xml"
+        p.write_text('<testsuite name="s" tests="0" failures="0" '
+                     'errors="0" skipped="0"></testsuite>')
+        assert junit_scores(p)["test_pass_rate"] == 0.0
+
+
+def test_zero_tests_cannot_prove(tmp_path):
+    """A run that collected zero tests proves nothing: the wedge fails closed
+    (CANNOT PROVE) rather than emitting a brightgreen 'PROVEN 0/0' badge."""
+    import pytest
+    with pytest.raises(wedge.WedgeUnmeasured):
+        _run(tmp_path, _junit(tmp_path, tests=0))
+
+
+def test_deleting_baseline_cannot_launder_regression(tmp_path):
+    """Deleting evals/.wedge-baseline.json must NOT reset the bar: the bar is
+    reconstructed from the signed receipts, so a regression still BLOCKs."""
+    _run(tmp_path, _junit(tmp_path, tests=10, failures=0))   # bar: 1.0 / 10
+    (tmp_path / "evals" / ".wedge-baseline.json").unlink()   # attacker wipes it
+    res = _run(tmp_path, _junit(tmp_path, tests=10, failures=5))  # 0.5 now
+    assert res["decision"] == "BLOCK"
+    assert res["bar_from_receipts"] is True
+
+
+def test_min_pass_rate_is_the_deliberate_lower_floor(tmp_path):
+    """The documented escape hatch: --min-pass-rate pins a lower floor on
+    purpose, even after a higher bar exists in receipts."""
+    _run(tmp_path, _junit(tmp_path, tests=10, failures=0))   # bar: 1.0 / 10
+    (tmp_path / "evals" / ".wedge-baseline.json").unlink()
+    res = _run(tmp_path, _junit(tmp_path, tests=10, failures=4), min_pass_rate=0.5)
+    assert res["decision"] == "PROMOTE"
 
 
 # --------------------------------------------------------------- regression
