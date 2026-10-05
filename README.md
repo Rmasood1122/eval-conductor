@@ -10,8 +10,10 @@ them. It answers the one question none of them do:
 
 > **Can you *prove* this eval result — or do we just trust it?**
 
-Open source, MIT. stdlib + PyYAML only. No API keys, no infrastructure, nothing
-phones home. Dogfooded on its own 178 tests.
+Open source, MIT. stdlib + PyYAML only. No telemetry, no accounts, no
+infrastructure. The only outbound call is optional — `/conductor
+--verify-evidence` checks one of your own CI runs against the GitHub API — and
+receipts are signed with a key you generate locally. Dogfooded on its own 178 tests.
 
 *The thesis: trust an AI verdict only by what it can prove.*
 
@@ -133,7 +135,8 @@ Honesty is the product, so here are the limits in plain sight:
 ## Install
 
 Requires [Claude Code](https://claude.com/claude-code), Python 3.10+, and PyYAML
-(`pip install pyyaml`). No API keys, no infrastructure, nothing phones home.
+(`pip install pyyaml`). No telemetry and no accounts; the only outbound call is
+the optional `/conductor --verify-evidence` check against the GitHub API.
 
 ```
 /plugin marketplace add Rmasood1122/eval-conductor
