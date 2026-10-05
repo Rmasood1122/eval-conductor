@@ -1,5 +1,5 @@
 name: "Eval Conductor"
-description: "Prove your tests/evals didn't regress — a fail-closed gate with a signed, tamper-evident receipt. Blocks the job on regression."
+description: "Fail-closed gate that proves your tests/evals didn't regress, with a signed, tamper-evident receipt."
 author: "Rehan Masood"
 branding:
   icon: "shield"
