@@ -114,13 +114,14 @@ def u_key_file_default(_):
     r = PY_FILES.get(CORE / "eval_receipt.py", "")
     return ('DEFAULT_KEY_PATH = "evals/.receipt-key"' in w
             and 'DEFAULT_KEY_PATH = "evals/.receipt-key"' in r), "evals/.receipt-key default"
-def u_github_token_env(_):
-    return "GITHUB_TOKEN" in ALL_SRC, "GITHUB_TOKEN honoured for --verify-evidence"
+def u_no_credential_forward(_):
+    return ("GITHUB_TOKEN" not in ALL_SRC and "Authorization" not in ALL_SRC,
+            "shipped code reads GITHUB_TOKEN or sets an Authorization header")
 def u_docs_no_userconfig(_):
     docs = [d for d in ("SECURITY.md", "PRIVACY.md", "README.md")
             if "userConfig" in (ROOT / d).read_text()]
     sec = (ROOT / "SECURITY.md").read_text()
-    ok = not docs and "EVAL_RECEIPT_KEY" in sec and "GITHUB_TOKEN" in sec
+    ok = not docs and "EVAL_RECEIPT_KEY" in sec and "GITHUB_TOKEN" not in sec
     return ok, f"userConfig still described in {docs}"
 
 
@@ -371,7 +372,7 @@ CHECKS = [
     ("U2", "no code or command reads a userConfig value", u_nothing_reads_userconfig),
     ("U3", "EVAL_RECEIPT_KEY env still resolves the signing key", u_env_key_resolves),
     ("U4", "auto-generated key file stays evals/.receipt-key", u_key_file_default),
-    ("U5", "GITHUB_TOKEN env still honoured for --verify-evidence", u_github_token_env),
+    ("U5", "no credential is read or forwarded (--verify-evidence is anonymous)", u_no_credential_forward),
     ("U6", "docs describe env/file keys, not userConfig", u_docs_no_userconfig),
     ("C1", "no top-level bin/ (claude.ai refuses it)", c_no_bin),
     ("C2", "no CLAUDE.md at plugin root", c_no_root_claudemd),

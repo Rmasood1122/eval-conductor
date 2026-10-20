@@ -14,9 +14,9 @@ runs it through the normal Bash tool where you see it.
 ## Network
 The plugin makes **one** outbound call, and only when you explicitly run
 `/conductor --verify-evidence`: a GET to the GitHub API (`api.github.com`) to
-confirm that a CI run you cited is real and green. Anonymous access works for
-public repos; a token is used only if you provide one (`GITHUB_TOKEN`), and it is
-only ever sent to `api.github.com`. There is no telemetry, no
+confirm that a CI run you cited is real and green. The call is anonymous: the
+plugin reads no token and sends no credential, so it works for public repos only
+(on a private repo the check fails closed). There is no telemetry, no
 analytics, and no other network access. The `shields.io` badge URL that
 `/eval-prove` prints is plain text for you to paste — the plugin never fetches it.
 
@@ -27,8 +27,8 @@ analytics, and no other network access. The `shields.io` badge URL that
   specific key instead (for example, to match CI), set `EVAL_RECEIPT_KEY`; it
   takes precedence over the file.
 - The plugin asks for no settings or credentials at install time. Keys come only
-  from the environment or the key file: in CI, from standard repository secrets
-  (`EVAL_RECEIPT_KEY`, and `GITHUB_TOKEN` for `/conductor --verify-evidence`).
+  from the environment or the key file: in CI, from a standard repository secret
+  (`EVAL_RECEIPT_KEY`). The signing key is used locally and never sent anywhere.
 - No credentials are committed to this repository. The only key-shaped strings in
   the source are obviously-fake repeated-byte test fixtures (e.g. `ab…ab`).
 
