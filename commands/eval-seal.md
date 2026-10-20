@@ -6,7 +6,7 @@ argument-hint: "[--registry PATH] [--seals-dir DIR] [--note TEXT] [--no-bands]"
 Seal the current eval bar in the user's repository, as a pre-registration:
 
 ```
-TOOL="evals/tools/prereg.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/prereg.py"; python3 "$TOOL" seal $ARGUMENTS
+TOOL="evals/tools/prereg.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/prereg.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" seal $ARGUMENTS
 ```
 
 (Runs from the installed plugin, but sealing needs a registry: if `evals/registry.yaml` doesn't exist yet, run `/eval-init` first, then re-run this.)
@@ -48,5 +48,10 @@ Honest limits (state them; do not oversell):
 To enforce in CI, add the drift check as a release-blocking step:
 
 ```
-TOOL="evals/tools/prereg.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/prereg.py"; python3 "$TOOL" check --require-seal
+TOOL="evals/tools/prereg.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/prereg.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" check --require-seal
 ```
+
+That line runs the check here, through the installed plugin. CI has no plugin,
+so the workflow runs the vendored copy instead:
+`python evals/tools/prereg.py check --require-seal` (already a commented step
+in `.github/workflows/eval-gate.yml`).

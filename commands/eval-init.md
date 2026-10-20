@@ -8,7 +8,7 @@ Install the eval gate into the user's current repository.
 1. Run the scaffolder, passing through any arguments the user gave:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/eval_init.py" $ARGUMENTS
+TOOL="${CLAUDE_PLUGIN_ROOT}/scripts/eval_init.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 If it fails because PyYAML is missing, install it (`pip install pyyaml` — add

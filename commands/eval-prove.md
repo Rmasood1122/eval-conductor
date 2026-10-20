@@ -6,7 +6,7 @@ argument-hint: "[--junit report.xml] [--run \"CMD\"] [--min-pass-rate 0.95]"
 Turn the user's existing tests into a shareable proof, zero config:
 
 ```
-TOOL="evals/tools/wedge.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/wedge.py"; python3 "$TOOL" $ARGUMENTS
+TOOL="evals/tools/wedge.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/wedge.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 (Runs zero-config straight from the installed plugin — no `/eval-init` needed. It uses a vendored `evals/tools/wedge.py` if the repo already has one, otherwise the plugin's own copy. `/eval-init` later graduates the repo to the full gate.)

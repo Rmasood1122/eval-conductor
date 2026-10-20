@@ -32,6 +32,7 @@ Usage: eval_init.py [--force] [--profile auto|pytest|plugin-eval|llm]
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -245,8 +246,8 @@ def install(force: bool, profile: str) -> str:
 NEXT = {
     "pytest": """
 NEXT STEPS (in order):
- 1. python -m pytest -q --junitxml=evals/junit.xml; python evals/tools/adapters.py junit evals/junit.xml
- 2. python evals/tools/promote.py            -> first gate run: real numbers, threshold-only.
+ 1. __PY__ -m pytest -q --junitxml=evals/junit.xml; __PY__ evals/tools/adapters.py junit evals/junit.xml
+ 2. __PY__ evals/tools/promote.py            -> first gate run: real numbers, threshold-only.
  3. git add evals .github && git push        -> the gate is live in CI on this push.
  4. Add your LLM/eval metrics to evals/registry.yaml when you have a producer
     (adapters: promptfoo, scores). Then baseline.py --runs 3 for noise bands.
@@ -255,25 +256,36 @@ Never edit a threshold to turn a red gate green.""",
     "plugin-eval": """
 NEXT STEPS (in order):
  1. claude plugin eval . --trust-plugin --no-publish      -> evals/results/<ts>/
- 2. python evals/tools/adapters.py plugin-eval evals/results/
- 3. python evals/tools/promote.py            -> first gate run, threshold-only.
+ 2. __PY__ evals/tools/adapters.py plugin-eval evals/results/
+ 3. __PY__ evals/tools/promote.py            -> first gate run, threshold-only.
  4. Noise bands from data: repeat step 1 three times, convert each run
     (adapters.py plugin-eval evals/results/<ts>/ --out evals/runs/<n>.json),
-    then python evals/tools/baseline.py --from "evals/runs/*.json"
+    then __PY__ evals/tools/baseline.py --from "evals/runs/*.json"
  5. Add ANTHROPIC_API_KEY to CI secrets; the workflow is pre-filled.
 Never edit a threshold to turn a red gate green.""",
     "llm": """
 NEXT STEPS (in order):
  1. EDIT evals/registry.yaml — your real metrics, thresholds, blocking tiers.
  2. Make your eval run write evals/candidate.json (shape: candidate.example.json),
-    or convert its output: python evals/tools/adapters.py promptfoo|scores <file>
- 3. python evals/tools/promote.py            -> first gate run (threshold-only).
- 4. python evals/tools/baseline.py --cmd "<your eval cmd>" --runs 3
+    or convert its output: __PY__ evals/tools/adapters.py promptfoo|scores <file>
+ 3. __PY__ evals/tools/promote.py            -> first gate run (threshold-only).
+ 4. __PY__ evals/tools/baseline.py --cmd "<your eval cmd>" --runs 3
                                              -> measured noise bands.
  5. Write BLOCK fixtures (evals/fixtures/README.md) — prove each hard gate fires.
  6. Fill in the eval command in .github/workflows/eval-gate.yml and push.
 Never edit a threshold to turn a red gate green.""",
 }
+
+
+def interpreter_name() -> str:
+    """The command that started this interpreter, for copy-pasteable NEXT STEPS.
+    core/py.sh exports the candidate it picked (python3, python or `py -3`); run
+    any other way, fall back to the executable's own name."""
+    picked = os.environ.get("EVAL_CONDUCTOR_PY", "").strip()
+    if picked:
+        return picked
+    name = Path(sys.executable).name
+    return (name[:-4] if name.lower().endswith(".exe") else name) or "python"
 
 
 def main() -> int:
@@ -311,7 +323,7 @@ def main() -> int:
         if r.returncode != 0:
             return r.returncode
 
-    print(NEXT[profile])
+    print(NEXT[profile].replace("__PY__", interpreter_name()))
     return 0
 
 

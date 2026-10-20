@@ -6,7 +6,7 @@ argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
 Explain the most recent gate decision in the user's repository:
 
 ```
-TOOL="evals/tools/explain.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/explain.py"; python3 "$TOOL" $ARGUMENTS
+TOOL="evals/tools/explain.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/explain.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 (Runs from the installed plugin — no `/eval-init` needed. Explains the latest gate decision if one exists; prefers a vendored copy, else the plugin's own.)
