@@ -114,13 +114,14 @@ def u_key_file_default(_):
     r = PY_FILES.get(CORE / "eval_receipt.py", "")
     return ('DEFAULT_KEY_PATH = "evals/.receipt-key"' in w
             and 'DEFAULT_KEY_PATH = "evals/.receipt-key"' in r), "evals/.receipt-key default"
-def u_github_token_env(_):
-    return "GITHUB_TOKEN" in ALL_SRC, "GITHUB_TOKEN honoured for --verify-evidence"
+def u_no_credential_forward(_):
+    return ("GITHUB_TOKEN" not in ALL_SRC and "Authorization" not in ALL_SRC,
+            "shipped code reads GITHUB_TOKEN or sets an Authorization header")
 def u_docs_no_userconfig(_):
     docs = [d for d in ("SECURITY.md", "PRIVACY.md", "README.md")
             if "userConfig" in (ROOT / d).read_text()]
     sec = (ROOT / "SECURITY.md").read_text()
-    ok = not docs and "EVAL_RECEIPT_KEY" in sec and "GITHUB_TOKEN" in sec
+    ok = not docs and "EVAL_RECEIPT_KEY" in sec and "GITHUB_TOKEN" not in sec
     return ok, f"userConfig still described in {docs}"
 
 
@@ -166,16 +167,20 @@ def c_no_autoexec(_):
 # ==========================================================================
 # D. SECRETS (8)
 # ==========================================================================
+# Local environments (a .venv inside the checkout ships CA bundles as *.pem) are
+# not part of the plugin; path parts are compared so this holds on Windows too.
+NOT_SHIPPED = {".git", ".venv", "venv", "env", "node_modules", ".tox", ".pytest_cache"}
+def _tree(pattern):
+    return [p for p in ROOT.rglob(pattern)
+            if not (set(p.relative_to(ROOT).parts) & NOT_SHIPPED)]
 def s_no_keyfile(_):
-    return not list(ROOT.rglob(".receipt-key")), "no .receipt-key in tree"
+    return not _tree(".receipt-key"), "no .receipt-key in tree"
 def s_no_key_pem(_):
-    bad = [p for p in list(ROOT.rglob("*.key")) + list(ROOT.rglob("*.pem"))
-           if ".git/" not in str(p)]
+    bad = _tree("*.key") + _tree("*.pem")
     return not bad, f"{bad}"
 def s_no_committed_receipts(_):
     # a receipts/ or seals/ dir with real receipts does not belong in THIS repo
-    bad = [p for p in list(ROOT.rglob("evals/receipts")) + list(ROOT.rglob("evals/seals"))
-           if p.is_dir() and ".git/" not in str(p)]
+    bad = [p for p in _tree("evals/receipts") + _tree("evals/seals") if p.is_dir()]
     return not bad, f"{bad}"
 def s_gitignore_key(_):
     gi = (ROOT / ".gitignore").read_text() if (ROOT / ".gitignore").exists() else ""
@@ -371,7 +376,7 @@ CHECKS = [
     ("U2", "no code or command reads a userConfig value", u_nothing_reads_userconfig),
     ("U3", "EVAL_RECEIPT_KEY env still resolves the signing key", u_env_key_resolves),
     ("U4", "auto-generated key file stays evals/.receipt-key", u_key_file_default),
-    ("U5", "GITHUB_TOKEN env still honoured for --verify-evidence", u_github_token_env),
+    ("U5", "no credential is read or forwarded (--verify-evidence is anonymous)", u_no_credential_forward),
     ("U6", "docs describe env/file keys, not userConfig", u_docs_no_userconfig),
     ("C1", "no top-level bin/ (claude.ai refuses it)", c_no_bin),
     ("C2", "no CLAUDE.md at plugin root", c_no_root_claudemd),

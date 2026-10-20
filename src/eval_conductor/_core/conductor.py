@@ -87,19 +87,13 @@ def repo_slug_from_git() -> str | None:
 
 
 def fetch_json(url: str) -> dict | None:
-    """GET url -> parsed JSON, or None on any failure. Sends GITHUB_TOKEN when
-    set (private repos / rate limits), and only to api.github.com; anonymous
-    works for public repos. The token is read in gh_auth.py, never here."""
+    """Anonymous GET url -> parsed JSON, or None on any failure. No credential is
+    read or sent: public repos only, within GitHub's anonymous rate limit."""
     import json as _json
-    import urllib.parse
     import urllib.request
     import urllib.error
-    from gh_auth import github_token
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json",
                                                "User-Agent": "eval-conductor"})
-    tok = github_token()
-    if tok and urllib.parse.urlsplit(url).hostname == "api.github.com":
-        req.add_header("Authorization", f"Bearer {tok}")
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             return _json.loads(r.read().decode("utf-8"))
@@ -120,7 +114,8 @@ def verify_ci_run(evidence: str, expected_slug: str | None, fetch=fetch_json) ->
                 f"evidence must come from the repo being gated")
     data = fetch(f"https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}")
     if not data or "id" not in data:
-        return f"run {run_id} not found at {url_slug} (or API unreachable) — fail closed"
+        return (f"run {run_id} not found at {url_slug} — the check is anonymous, so a "
+                f"private repo, a rate limit or no network all look like this — fail closed")
     if str(data.get("id")) != run_id:
         return f"API returned run {data.get('id')} for requested {run_id}"
     if data.get("status") != "completed":
@@ -394,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
     sp.add_argument("--verify-evidence", action="store_true",
                     help="for ci-kind steps: confirm the run exists in THIS repo "
                          "and concluded success via the GitHub API (needs network; "
-                         "GITHUB_TOKEN honoured)")
+                         "anonymous, so public repos only)")
     sp.set_defaults(fn=cmd_check)
     sp = sub.add_parser("defer"); sp.add_argument("step_n", type=int)
     sp.add_argument("--trigger"); sp.set_defaults(fn=cmd_defer)

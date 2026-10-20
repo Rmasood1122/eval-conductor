@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.3 — 2026-10-20
+
+- **`/conductor --verify-evidence` no longer reads or sends any credential.**
+  1.4.2 read `GITHUB_TOKEN` from the installer's environment and sent it to the
+  GitHub API; the directory policy check correctly held that as a credential
+  forward. The check is now anonymous: public repos only, and a private repo,
+  rate limit or offline run fails closed with a message that says so.
+  `core/gh_auth.py` is gone. Nothing else in the plugin touches the network.
+- PRIVACY.md now states the one opt-in network call instead of claiming none.
+
 ## 1.4.2 — 2026-10-20
 
 Activation fixes: every command now runs on Windows, nothing strands a new user,

@@ -21,3 +21,7 @@ evals/.eval-prove-junit.xml
 build/
 dist/
 __pycache__/
+
+# local virtualenvs (never committed)
+.venv/
+venv/
