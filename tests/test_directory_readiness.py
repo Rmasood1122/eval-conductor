@@ -167,16 +167,20 @@ def c_no_autoexec(_):
 # ==========================================================================
 # D. SECRETS (8)
 # ==========================================================================
+# Local environments (a .venv inside the checkout ships CA bundles as *.pem) are
+# not part of the plugin; path parts are compared so this holds on Windows too.
+NOT_SHIPPED = {".git", ".venv", "venv", "env", "node_modules", ".tox", ".pytest_cache"}
+def _tree(pattern):
+    return [p for p in ROOT.rglob(pattern)
+            if not (set(p.relative_to(ROOT).parts) & NOT_SHIPPED)]
 def s_no_keyfile(_):
-    return not list(ROOT.rglob(".receipt-key")), "no .receipt-key in tree"
+    return not _tree(".receipt-key"), "no .receipt-key in tree"
 def s_no_key_pem(_):
-    bad = [p for p in list(ROOT.rglob("*.key")) + list(ROOT.rglob("*.pem"))
-           if ".git/" not in str(p)]
+    bad = _tree("*.key") + _tree("*.pem")
     return not bad, f"{bad}"
 def s_no_committed_receipts(_):
     # a receipts/ or seals/ dir with real receipts does not belong in THIS repo
-    bad = [p for p in list(ROOT.rglob("evals/receipts")) + list(ROOT.rglob("evals/seals"))
-           if p.is_dir() and ".git/" not in str(p)]
+    bad = [p for p in _tree("evals/receipts") + _tree("evals/seals") if p.is_dir()]
     return not bad, f"{bad}"
 def s_gitignore_key(_):
     gi = (ROOT / ".gitignore").read_text() if (ROOT / ".gitignore").exists() else ""
