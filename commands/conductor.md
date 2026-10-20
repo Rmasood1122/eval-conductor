@@ -1,5 +1,5 @@
 ---
-description: Evidence-gated 27-step build ledger — init, status, check off steps with CI evidence, audit; refuses placeholder proof and step-skipping
+description: Is this step really done? Run a project on the 27-step evidence ledger, where a step closes only on a real, green CI run and placeholder proof or skipped steps are refused
 argument-hint: "init --project NAME --archetype A1..A5 | status | next | guide | check --evidence URL | defer N --trigger ... | na N --justify ... | reopen N | audit"
 ---
 

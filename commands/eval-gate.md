@@ -1,5 +1,5 @@
 ---
-description: Run the eval release gate — candidate vs baseline under the registry, PROMOTE or BLOCK with a per-metric verdict table
+description: Did this change make my evals worse? Judge the latest scores against the baseline and thresholds, PROMOTE or BLOCK, with a per-metric table that says why
 argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
 ---
 

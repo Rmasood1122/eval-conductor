@@ -1,6 +1,6 @@
 {
   "name": "eval-conductor-marketplace",
-  "description": "Fail-closed release gates for AI evals — gate claude plugin eval, pytest, promptfoo or any scores; plus an evidence-gated build ledger.",
+  "description": "Catch AI eval regressions before they ship: fail-closed release gates for the scores you already produce, with signed receipts, plus an evidence-gated build ledger.",
   "owner": {
     "name": "Rehan Masood",
     "url": "https://github.com/Rmasood1122"
@@ -9,7 +9,7 @@
     {
       "name": "eval-conductor",
       "source": "./",
-      "description": "Stop AI evals quietly regressing: fail-closed release gate for scores you already produce (claude plugin eval, pytest, promptfoo), with signed tamper-evident receipts for every PROMOTE/BLOCK, + an evidence-gated build ledger. /eval-init gates real numbers on the first push."
+      "description": "Know when a change made your AI system worse: a fail-closed CI gate for scores you already produce (pytest, claude plugin eval, promptfoo), a signed tamper-evident receipt for every decision, and /eval-prove for a zero-setup proof of your tests."
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: evidence-discipline
-description: Run evidence-gated project execution with the 27-step conductor ledger — closing steps only on verifiable CI proof, recording reversals, and recognizing fake-evidence patterns in your own work
+description: Use when work is about to be called done and the claim needs proof — "mark this step done", "CI passed, close it out", "how do I prove this is finished", "just use the last green run as evidence", "what's left before we ship" — and before YOU say a task is complete. A step closes only on a real, green CI run of this code (never a placeholder URL, pasted command text, or an older green run), reversals are recorded rather than erased, and the 27-step conductor ledger (/conductor) enforces it.
 ---
 
 # Evidence discipline (the conductor method)

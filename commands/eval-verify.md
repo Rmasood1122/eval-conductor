@@ -1,5 +1,5 @@
 ---
-description: Verify the eval receipt chain — every PROMOTE/BLOCK is signed, unaltered, chained, and its decision matches its own verdicts
+description: Has anyone altered past eval results? Check every signed PROMOTE/BLOCK receipt — unaltered, one unbroken chain, and each decision matching its own verdicts
 argument-hint: "[--receipts-dir DIR] [--registry PATH] [--structure-only]"
 ---
 

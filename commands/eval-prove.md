@@ -1,5 +1,5 @@
 ---
-description: Prove your tests pass — one command turns an existing test suite into a signed, tamper-evident receipt plus a pasteable PR badge, with no registry or config
+description: Need proof your tests pass? Zero setup, one command — runs your existing tests, signs a tamper-evident receipt, prints a PR badge, and blocks later regressions
 argument-hint: "[--junit report.xml] [--run \"CMD\"] [--min-pass-rate 0.95]"
 ---
 

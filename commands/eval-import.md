@@ -1,5 +1,5 @@
 ---
-description: Convert scores you already produce — JUnit XML, `claude plugin eval` results, promptfoo output, or a flat JSON of numbers — into evals/candidate.json for the gate
+description: Already have eval scores? Turn JUnit XML, `claude plugin eval` results, promptfoo output or a JSON of numbers into a candidate the gate can judge
 argument-hint: "junit <report.xml> | plugin-eval <evals/results/ or aggregate-result.json> | promptfoo <out.json> | scores <file.json> [--out PATH]"
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Build or refresh the eval baseline — run the eval N times and compute mean + 2-sigma noise bands per metric
+description: Evals flaky, or a real regression? Run your eval several times and measure each metric's noise band, so the gate blocks real drops and lets ordinary noise through
 argument-hint: "--cmd \"<eval command>\" [--runs 3] | --from \"evals/runs/*.json\""
 ---
 

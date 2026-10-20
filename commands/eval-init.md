@@ -1,5 +1,5 @@
 ---
-description: Install a fail-closed eval release gate into the current repo — auto-detects pytest or a Claude Code plugin and gates real numbers on the first push
+description: Stop evals quietly regressing in CI. Installs a fail-closed release gate in this repo, detects pytest or a Claude Code plugin, and gates real numbers on the first push
 argument-hint: "[--profile auto|pytest|plugin-eval|llm] [--force] [--conductor --project NAME --archetype A1..A5]"
 ---
 

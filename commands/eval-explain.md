@@ -1,5 +1,5 @@
 ---
-description: Explain a gate decision in plain English — which metric, breach vs regression, how far past the line, the legitimate fix, and the theater moves named
+description: Why did the gate block, and what is the honest fix? Plain-English diagnosis of which metric failed, breach vs regression, how far past the line, and which fixes are theater
 argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
 ---
 

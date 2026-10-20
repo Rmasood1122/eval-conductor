@@ -53,6 +53,7 @@ def test_skills_frontmatter():
     for s in skills:
         data = frontmatter(s)
         assert data.get("description"), s
+        assert len(data["description"]) <= 1024, s   # Agent Skills description limit
 
 
 def test_core_files_present_and_stdlib_plus_yaml_only():

@@ -1,5 +1,5 @@
 ---
-description: Pre-register the eval bar — seal the registry (and band floors) BEFORE a run, so a later decision can prove it was judged under a bar committed to in advance
+description: Can you prove the bar was not moved after the results came in? Seal thresholds and noise bands before the run, so the decision proves it was judged against a bar fixed in advance
 argument-hint: "[--registry PATH] [--seals-dir DIR] [--note TEXT] [--no-bands]"
 ---
 
