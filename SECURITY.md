@@ -21,12 +21,14 @@ analytics, and no other network access. The `shields.io` badge URL that
 `/eval-prove` prints is plain text for you to paste — the plugin never fetches it.
 
 ## Credentials
-- The eval **signing key** is an HMAC key you control. `/eval-init` generates one
-  locally and git-ignores it (`evals/.receipt-key`); it is never transmitted and
-  no secret value is ever printed or logged. You may instead declare it (or a
-  GitHub token) as a **sensitive `userConfig`** value, stored in Claude Code's
-  secure credential store. In CI, both come from standard repository secrets
-  (`EVAL_RECEIPT_KEY`, `GITHUB_TOKEN`).
+- The eval **signing key** is an HMAC key you control. `/eval-init` and
+  `/eval-prove` generate one locally and git-ignore it (`evals/.receipt-key`); it
+  is never transmitted and no secret value is ever printed or logged. To use a
+  specific key instead (for example, to match CI), set `EVAL_RECEIPT_KEY`; it
+  takes precedence over the file.
+- The plugin asks for no settings or credentials at install time. Keys come only
+  from the environment or the key file: in CI, from standard repository secrets
+  (`EVAL_RECEIPT_KEY`, and `GITHUB_TOKEN` for `/conductor --verify-evidence`).
 - No credentials are committed to this repository. The only key-shaped strings in
   the source are obviously-fake repeated-byte test fixtures (e.g. `ab…ab`).
 
