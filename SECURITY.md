@@ -15,7 +15,8 @@ runs it through the normal Bash tool where you see it.
 The plugin makes **one** outbound call, and only when you explicitly run
 `/conductor --verify-evidence`: a GET to the GitHub API (`api.github.com`) to
 confirm that a CI run you cited is real and green. Anonymous access works for
-public repos; a token is used only if you provide one. There is no telemetry, no
+public repos; a token is used only if you provide one (`GITHUB_TOKEN`), and it is
+only ever sent to `api.github.com`. There is no telemetry, no
 analytics, and no other network access. The `shields.io` badge URL that
 `/eval-prove` prints is plain text for you to paste — the plugin never fetches it.
 
