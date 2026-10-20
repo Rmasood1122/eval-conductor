@@ -9,7 +9,7 @@
     {
       "name": "eval-conductor",
       "source": "./",
-      "description": "Know when a change made your AI system worse: a fail-closed CI gate for scores you already produce (pytest, claude plugin eval, promptfoo), a signed tamper-evident receipt for every decision, and /eval-prove for a zero-setup proof of your tests."
+      "description": "Works in Claude Code. Know when a change made your AI system worse: a fail-closed CI gate for scores you already produce (pytest, claude plugin eval, promptfoo), a signed tamper-evident receipt for every decision, and /eval-prove for a zero-setup proof of your tests."
     }
   ]
 }

@@ -1,3 +1,10 @@
+Works in Claude Code. To install, run these two commands in a Claude Code session:
+
+```
+/plugin marketplace add Rmasood1122/eval-conductor
+/plugin install eval-conductor@eval-conductor-marketplace
+```
+
 # Eval Conductor
 
 [![CI](https://github.com/Rmasood1122/eval-conductor/actions/workflows/ci.yml/badge.svg)](https://github.com/Rmasood1122/eval-conductor/actions/workflows/ci.yml)
