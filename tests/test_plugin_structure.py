@@ -27,6 +27,23 @@ def test_manifest_schema():
     assert re.fullmatch(r"\d+\.\d+\.\d+", m["version"])
 
 
+def test_every_version_string_agrees_with_the_changelog():
+    """The plugin manifests, the PyPI metadata and the CLI's --version must all
+    name the release the CHANGELOG's newest entry describes."""
+    found = {
+        ".claude-plugin/plugin.json": json.loads(
+            (ROOT / ".claude-plugin/plugin.json").read_text())["version"],
+        "plugin.json": json.loads((ROOT / "plugin.json").read_text())["version"],
+        "pyproject.toml": re.search(r'(?m)^version = "([^"]+)"',
+                                    (ROOT / "pyproject.toml").read_text()).group(1),
+    }
+    for rel in ("src/eval_conductor/__init__.py", "src/eval_conductor/cli.py"):
+        found[rel] = re.search(r'(?m)^__version__ = "([^"]+)"',
+                               (ROOT / rel).read_text()).group(1)
+    latest = re.search(r"(?m)^## (\d+\.\d+\.\d+)", (ROOT / "CHANGELOG.md").read_text()).group(1)
+    assert set(found.values()) == {latest}, found | {"CHANGELOG.md": latest}
+
+
 def frontmatter(path: Path) -> dict:
     text = path.read_text()
     assert text.startswith("---\n"), path
