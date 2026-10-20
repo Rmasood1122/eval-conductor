@@ -159,10 +159,10 @@ def bands_from_registry(registry_path) -> dict:
     """The band the gate would use from the REGISTRY ALONE (the noise_band
     floor) for each metric. Sealing this catches a later baseline re-run that
     widens a band post-hoc: the committed floor is fixed here."""
-    import yaml
     try:
+        import yaml
         rows = yaml.safe_load(Path(registry_path).read_text())
-    except Exception:  # noqa: BLE001 - bands are optional; never block sealing
+    except Exception:  # noqa: BLE001 - bands (and PyYAML) are optional; never block sealing
         return {}
     out = {}
     if isinstance(rows, list):

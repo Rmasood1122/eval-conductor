@@ -32,7 +32,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    sys.stderr.write(
+        "eval-conductor: this command needs PyYAML. Install it with:\n"
+        "  pip install pyyaml   (add --break-system-packages if pip refuses)\n")
+    raise SystemExit(2)
 
 STEPS_FILE = Path(__file__).parent / "steps.yaml"
 DEFAULT_STATE = Path("evals/conductor_state.json")
