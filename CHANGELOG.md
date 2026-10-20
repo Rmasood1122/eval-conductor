@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+Every command now runs under a Python that has the packages it needs. On a
+Windows machine where `python3` and `python` were different installs and only
+`python` had pytest, `/eval-prove` stopped with `CANNOT PROVE: pytest is not
+installed` and `/eval-init` set the test-count floor to 1 because collection
+failed. `core/py.sh` now prefers a Python 3.10+ with pytest and PyYAML, then one
+with pytest, then any Python 3.10+ as before.
+
+Output is UTF-8: em dashes printed by the tools reached Claude Code on Windows
+as U+FFFD.
+
+- `core/py.sh`: three-pass interpreter choice (`importlib.util.find_spec`, no
+  imports); `PYTHONIOENCODING=utf-8` unless already set.
+- `tests/test_py_sh.py`: a bare-venv `python3` next to a `python` with pytest;
+  `/eval-prove` proves, `/eval-init` counts the real suite, output has no U+FFFD.
+
 ## 1.4.3 — 2026-10-20
 
 - **`/conductor --verify-evidence` no longer reads or sends any credential.**
