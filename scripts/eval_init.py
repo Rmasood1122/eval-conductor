@@ -42,6 +42,8 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 CORE = PLUGIN_ROOT / "core"
 TEMPLATES = PLUGIN_ROOT / "templates"
+sys.path.insert(0, str(CORE))
+from gitignore import LOCAL_ARTIFACTS, ensure_gitignore  # noqa: E402
 PROFILES = ("auto", "pytest", "plugin-eval", "llm")
 
 FIXTURES_README = """\
@@ -156,19 +158,6 @@ def count_tests(repo: Path) -> int | None:
     return len([ln for ln in r.stdout.splitlines() if "::" in ln])
 
 
-def ensure_gitignore(repo: Path, lines: list[str]) -> None:
-    gi = repo / ".gitignore"
-    text = gi.read_text() if gi.exists() else ""
-    existing = set(text.splitlines())
-    add = [ln for ln in lines if ln not in existing]
-    if not add:
-        return
-    body = (text.rstrip("\n") + "\n" if text else "") + "\n".join(add) + "\n"
-    gi.write_text(body)
-    for ln in add:
-        print(f"  gitignore: added {ln}")
-
-
 def install(force: bool, profile: str) -> str:
     created: list[str] = []
     repo = Path.cwd()
@@ -215,7 +204,7 @@ def install(force: bool, profile: str) -> str:
     for f in ("promote.py", "compare.py", "adapters.py", "registry_lint.py",
               "registry_diff_lint.py", "baseline.py", "conductor.py", "explain.py",
               "eval_receipt.py", "prereg.py", "wedge.py", "canonical.py",
-              "chain_state.py",
+              "chain_state.py", "gitignore.py",
               "steps.yaml"):
         put(repo / "evals/tools" / f, src=CORE / f)
     put(repo / "evals/fixtures/README.md", text=FIXTURES_README)
@@ -228,8 +217,7 @@ def install(force: bool, profile: str) -> str:
     # receipts themselves (evals/receipts/) ARE committed — they are the anchor
     # — so they are deliberately NOT ignored.
     import secrets as _secrets
-    ensure_gitignore(repo, ["evals/.receipt-key", "evals/.wedge-baseline.json",
-                            "evals/.eval-prove-junit.xml"])
+    ensure_gitignore(repo, LOCAL_ARTIFACTS)
     key_path = repo / "evals/.receipt-key"
     if not key_path.exists():  # never clobber an existing key — it would orphan old receipts
         key_path.write_text(_secrets.token_hex(32) + "\n")

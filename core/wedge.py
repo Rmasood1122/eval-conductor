@@ -48,10 +48,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from adapters import parse_junit, junit_scores, AdapterError   # noqa: E402
 from compare import decide                                      # noqa: E402
 import eval_receipt                                             # noqa: E402
+from gitignore import ensure_gitignore                          # noqa: E402
 
 DEFAULT_RECEIPTS_DIR = "evals/receipts"
 DEFAULT_KEY_PATH = "evals/.receipt-key"
 DEFAULT_BASELINE = "evals/.wedge-baseline.json"
+JUNIT_NAME = ".eval-prove-junit.xml"
 
 
 # --------------------------------------------------------------- detection
@@ -74,7 +76,7 @@ def detect_suite(work_dir: Path) -> tuple[str, str]:
 
 def run_pytest(work_dir: Path, run_cmd: str | None) -> Path | None:
     """Run the suite, return the JUnit XML path, or None if it couldn't run."""
-    out = work_dir / ".eval-prove-junit.xml"
+    out = work_dir / JUNIT_NAME
     if out.exists():
         out.unlink()
     if run_cmd:
@@ -170,6 +172,10 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
             raise WedgeUnmeasured(
                 "could not run the test suite to a JUnit file. Run your tests "
                 "yourself and pass the XML with --junit, or use --run.")
+
+    # From here the repo holds local-only state (this JUnit, then the bar and
+    # the signing key). Ignore it first so `git add -A` can never stage the key.
+    _ignore_local_state(work_dir, key_path, baseline_file)
 
     # 2. score (fail-closed: zero executed -> 0.0)
     try:
@@ -282,6 +288,19 @@ def _bar_from_receipts(receipts_dir) -> dict | None:
 
 class WedgeUnmeasured(Exception):
     """Could not measure the suite — fail closed, no proof of an unmeasured run."""
+
+
+def _ignore_local_state(work_dir: Path, key_path: Path, baseline_file: Path) -> None:
+    """Gitignore the signing key, the bar and the wedge's JUnit in
+    work_dir/.gitignore. A path outside work_dir is not this repo's to ignore."""
+    root = work_dir.resolve()
+    lines = []
+    for p in (key_path, baseline_file, work_dir / JUNIT_NAME):
+        try:
+            lines.append(p.resolve().relative_to(root).as_posix())
+        except ValueError:
+            continue
+    ensure_gitignore(work_dir, lines)
 
 
 def _ensure_key(key_path: Path) -> None:

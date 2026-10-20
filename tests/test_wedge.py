@@ -156,6 +156,16 @@ def test_auto_key_generated_and_signs(tmp_path):
     assert r.get("signing_version") == er.SIGNING and r.get("signature")
 
 
+def test_local_artifacts_are_gitignored(tmp_path):
+    """The key, the bar and the wedge's own JUnit are per-machine; `git add -A`
+    must never stage the signing key."""
+    _run(tmp_path, _junit(tmp_path, tests=3, failures=0))
+    lines = (tmp_path / ".gitignore").read_text().splitlines()
+    assert {"evals/.receipt-key", "evals/.wedge-baseline.json",
+            ".eval-prove-junit.xml"} <= set(lines)
+    assert not any("receipts" in ln for ln in lines), "receipts must stay committable"
+
+
 # --------------------------------------------------------------- zero-config
 def test_no_registry_file_anywhere(tmp_path):
     _run(tmp_path, _junit(tmp_path, tests=4, failures=0))
