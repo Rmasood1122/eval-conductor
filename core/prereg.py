@@ -211,7 +211,15 @@ def build_seal(*, registry_path, seals_dir, bands=None, note="", repo=None,
 
 def create_seal(*, registry_path, seals_dir, bands=None, note="", key=None) -> str | None:
     """Write a seal to seals_dir/<date>/<id>.json. Returns the path, or None on
-    a broken chain (refuses to extend it) / any failure, warning to stderr."""
+    a missing registry, a broken chain (refuses to extend it) or any failure,
+    warning to stderr. Nothing is written when it returns None."""
+    if not Path(registry_path).is_file():
+        # A seal with registry_sha256 null commits to no bar, yet would sit in
+        # the chain looking like a pre-registration.
+        print(f"FAIL: registry not found: {registry_path} — there is no bar to "
+              f"seal yet. Run /eval-init first to create one, then re-run "
+              f"/eval-seal.", file=sys.stderr)
+        return None
     try:
         seals_dir = Path(seals_dir)
         seal = build_seal(registry_path=registry_path, seals_dir=seals_dir,
