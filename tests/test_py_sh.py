@@ -7,13 +7,15 @@ by running it. These tests put fake interpreters first on PATH and run the real
 command lines through the harness in tests/test_commands_live.py.
 """
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 
-from test_commands_live import (BASH, CASES, COMMANDS, ROOT, command_lines,
-                                make_repo, real_python, run_line, write_shim)
+from test_commands_live import (BASH, CASES, COMMANDS, ROOT, command_lines,  # noqa: F401
+                                default_path, make_repo, real_python, run_line,
+                                write_shim)
 
 pytestmark = pytest.mark.skipif(BASH is None, reason="bash not available")
 
@@ -122,3 +124,43 @@ def test_command_lines_use_py_sh():
 
 def test_py_sh_is_lf_only():
     assert b"\r" not in (ROOT / "core" / "py.sh").read_bytes()
+
+
+@pytest.fixture
+def pytestless_python3_path(tmp_path):
+    """python3 is a real Python 3.10+ without the plugin's packages; python has them.
+
+    Found on a Windows machine with two installs: python3 = 3.14 without pytest,
+    python = 3.13 with it. py.sh took the first Python 3.10+, so /eval-prove said
+    CANNOT PROVE and /eval-init lowered the test-count floor to 1. A bare venv is
+    the faithful stand-in: its own subprocesses can't import pytest either."""
+    venv = tmp_path / "bare-venv"
+    subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)], check=True)
+    exe = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    shim = tmp_path / "shim"
+    write_shim(shim, "python3", f'exec "{exe.as_posix()}" "$@"')
+    real_python(shim, "python")
+    return f"{shim}{os.pathsep}{os.environ.get('PATH', '')}"
+
+
+def test_prove_runs_under_the_python_that_has_pytest(tmp_path, pytestless_python3_path):
+    repo = make_repo(tmp_path / "repo", "one_test")
+    rc, out = run_line(command_lines("eval-prove")[0], repo, pytestless_python3_path)
+    assert rc == 0, out
+    assert "PROVEN" in out and "CANNOT PROVE" not in out, out
+
+
+def test_init_counts_the_real_suite_when_python3_lacks_pytest(tmp_path, pytestless_python3_path):
+    repo = make_repo(tmp_path / "repo", "one_test")
+    rc, out = run_line(command_lines("eval-init")[0], repo, pytestless_python3_path)
+    assert rc == 0, out
+    assert "pytest collection failed" not in out, out
+
+
+def test_output_is_utf8_so_dashes_survive(tmp_path, default_path):
+    """Tools print em dashes; on Windows a piped stdout defaulted to cp1252 and
+    Claude Code showed them as U+FFFD."""
+    repo = make_repo(tmp_path / "repo", "one_test")
+    rc, out = run_line(command_lines("eval-prove")[0], repo, default_path)
+    assert rc == 0, out
+    assert "\u2014" in out and "\ufffd" not in out, out
