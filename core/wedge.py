@@ -93,11 +93,16 @@ def run_pytest(work_dir: Path, run_cmd: str | None) -> Path | None:
             return None
         return out if out.exists() else None
     try:
-        subprocess.run(
+        r = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", f"--junitxml={out}"],
             cwd=work_dir, capture_output=True, text=True, timeout=1800)
     except (OSError, subprocess.TimeoutExpired):
         return None
+    if not out.exists() and "No module named pytest" in (r.stderr or ""):
+        raise WedgeUnmeasured(
+            f"pytest is not installed for the Python running this ({sys.executable}). "
+            f'Install it with "{sys.executable}" -m pip install pytest, or pass '
+            f"results with --junit report.xml or --run.")
     return out if out.exists() else None
 
 
@@ -162,7 +167,7 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
             raise WedgeUnmeasured(f"--junit {jp} not found")
     else:
         kind, reason = detect_suite(work_dir)
-        if kind == "none":
+        if kind == "none" and not run_cmd:   # --run is the answer to "none"
             raise WedgeUnmeasured(
                 "no test suite detected. Point me at results with --junit "
                 "report.xml, or give a command that writes JUnit with "

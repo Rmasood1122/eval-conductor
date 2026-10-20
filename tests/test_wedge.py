@@ -184,6 +184,22 @@ def test_undetectable_suite_exits_2_with_guidance(tmp_path):
             or "test" in (r.stdout + r.stderr).lower())
 
 
+def test_interpreter_without_pytest_says_so(tmp_path, monkeypatch):
+    """`could not run the test suite` hides the fix. When the interpreter that
+    runs the wedge has no pytest, name it and the install command."""
+    (tmp_path / "tests").mkdir()
+
+    def no_pytest(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 1, "", f"{cmd[0]}: No module named pytest\n")
+    monkeypatch.setattr(wedge.subprocess, "run", no_pytest)
+    import pytest
+    with pytest.raises(wedge.WedgeUnmeasured, match="pytest is not installed") as exc:
+        wedge.run(work_dir=tmp_path, receipts_dir=tmp_path / "r",
+                  baseline_file=tmp_path / "bl.json", key_path=tmp_path / "k")
+    assert "-m pip install pytest" in str(exc.value)
+    assert "--junit" in str(exc.value)
+
+
 # --------------------------------------------------------------- CLI
 def test_cli_junit_end_to_end(tmp_path):
     j = _junit(tmp_path, tests=6, failures=0)

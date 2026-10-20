@@ -316,8 +316,9 @@ def verify(receipts_dir, *, key=None, structure_only=False,
            registry_path=None) -> int:
     rdir = Path(receipts_dir)
     if not rdir.exists() or not any(rdir.rglob("*.json")):
-        print(f"FAIL: no receipts under {rdir} — nothing to verify",
-              file=sys.stderr)
+        print(f"FAIL: no receipts under {rdir} — nothing to verify yet. Run "
+              f"/eval-prove (zero setup), or /eval-gate after /eval-init, to sign "
+              f"the first receipt; then re-run /eval-verify.", file=sys.stderr)
         return 2
 
     # 1. structure / chain (needs no key)

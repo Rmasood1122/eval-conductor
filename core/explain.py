@@ -29,7 +29,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from compare import Verdict, decide            # noqa: E402
 from promote import (extract_scores, load_registry, manifest_mismatch,  # noqa: E402
-                     registry_hash_mismatch)
+                     missing_candidate_help, registry_hash_mismatch)
 
 THEATER = (
     "What NOT to do (each turns a red gate green without fixing anything, and "
@@ -125,14 +125,17 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     bp, cp, rp = Path(args.baseline), Path(args.candidate), Path(args.registry)
-    baseline = json.loads(bp.read_text()) if bp.exists() else None
     if not cp.exists():
-        print(f"FAIL: candidate not found: {cp}", file=sys.stderr); return 2
+        print(missing_candidate_help(cp, rp), file=sys.stderr); return 2
+    baseline = json.loads(bp.read_text()) if bp.exists() else None
     raw = json.loads(cp.read_text())
     try:
         scores = extract_scores(raw, args.candidate)
         registry = load_registry(rp)
-    except (ValueError, FileNotFoundError) as exc:
+    except FileNotFoundError:
+        print(f"FAIL: registry not found: {rp} — run /eval-init first",
+              file=sys.stderr); return 2
+    except ValueError as exc:
         print(f"FAIL: {exc}", file=sys.stderr); return 2
 
     # same pre-checks as promote.py, explained
