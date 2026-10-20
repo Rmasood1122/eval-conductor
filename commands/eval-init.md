@@ -1,5 +1,5 @@
 ---
-description: Install a fail-closed eval release gate into the current repo — auto-detects pytest or a Claude Code plugin and gates real numbers on the first push
+description: Stop evals quietly regressing in CI. Installs a fail-closed release gate in this repo, detects pytest or a Claude Code plugin, and gates real numbers on the first push
 argument-hint: "[--profile auto|pytest|plugin-eval|llm] [--force] [--conductor --project NAME --archetype A1..A5]"
 ---
 
@@ -8,7 +8,7 @@ Install the eval gate into the user's current repository.
 1. Run the scaffolder, passing through any arguments the user gave:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/eval_init.py" $ARGUMENTS
+TOOL="${CLAUDE_PLUGIN_ROOT}/scripts/eval_init.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 If it fails because PyYAML is missing, install it (`pip install pyyaml` — add

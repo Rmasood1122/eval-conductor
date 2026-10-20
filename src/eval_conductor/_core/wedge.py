@@ -48,10 +48,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from adapters import parse_junit, junit_scores, AdapterError   # noqa: E402
 from compare import decide                                      # noqa: E402
 import eval_receipt                                             # noqa: E402
+from gitignore import ensure_gitignore                          # noqa: E402
 
 DEFAULT_RECEIPTS_DIR = "evals/receipts"
 DEFAULT_KEY_PATH = "evals/.receipt-key"
 DEFAULT_BASELINE = "evals/.wedge-baseline.json"
+JUNIT_NAME = ".eval-prove-junit.xml"
 
 
 # --------------------------------------------------------------- detection
@@ -74,7 +76,7 @@ def detect_suite(work_dir: Path) -> tuple[str, str]:
 
 def run_pytest(work_dir: Path, run_cmd: str | None) -> Path | None:
     """Run the suite, return the JUnit XML path, or None if it couldn't run."""
-    out = work_dir / ".eval-prove-junit.xml"
+    out = work_dir / JUNIT_NAME
     if out.exists():
         out.unlink()
     if run_cmd:
@@ -91,11 +93,16 @@ def run_pytest(work_dir: Path, run_cmd: str | None) -> Path | None:
             return None
         return out if out.exists() else None
     try:
-        subprocess.run(
+        r = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", f"--junitxml={out}"],
             cwd=work_dir, capture_output=True, text=True, timeout=1800)
     except (OSError, subprocess.TimeoutExpired):
         return None
+    if not out.exists() and "No module named pytest" in (r.stderr or ""):
+        raise WedgeUnmeasured(
+            f"pytest is not installed for the Python running this ({sys.executable}). "
+            f'Install it with "{sys.executable}" -m pip install pytest, or pass '
+            f"results with --junit report.xml or --run.")
     return out if out.exists() else None
 
 
@@ -160,7 +167,7 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
             raise WedgeUnmeasured(f"--junit {jp} not found")
     else:
         kind, reason = detect_suite(work_dir)
-        if kind == "none":
+        if kind == "none" and not run_cmd:   # --run is the answer to "none"
             raise WedgeUnmeasured(
                 "no test suite detected. Point me at results with --junit "
                 "report.xml, or give a command that writes JUnit with "
@@ -171,11 +178,23 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
                 "could not run the test suite to a JUnit file. Run your tests "
                 "yourself and pass the XML with --junit, or use --run.")
 
+    # From here the repo holds local-only state (this JUnit, then the bar and
+    # the signing key). Ignore it first so `git add -A` can never stage the key.
+    _ignore_local_state(work_dir, key_path, baseline_file)
+
     # 2. score (fail-closed: zero executed -> 0.0)
     try:
         scores = junit_scores(jp)
     except AdapterError as exc:
         raise WedgeUnmeasured(str(exc))
+
+    # 2b. zero collected tests is not a proof. A run that measured nothing must
+    # fail closed (CANNOT PROVE), never emit a brightgreen "PROVEN 0/0" badge.
+    if scores.get("test_count", 0) == 0:
+        raise WedgeUnmeasured(
+            "zero tests were collected or executed — a run that measured nothing "
+            "proves nothing. Check your test discovery (e.g. functions must be "
+            "named test_*), or pass results with --junit / --run.")
 
     # 3. gate (capture-then-gate)
     baseline = None
@@ -184,6 +203,17 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
             baseline = json.loads(baseline_file.read_text())
         except (json.JSONDecodeError, OSError):
             baseline = None
+    # The bar also lives in the signed, tamper-evident receipts. If the local
+    # baseline file is missing (deleted, or a fresh clone), rebuild the bar from
+    # the receipt chain so deleting evals/.wedge-baseline.json cannot launder a
+    # regression into a "first run". A genuine first run (no receipts yet) still
+    # captures cleanly. To lower the bar deliberately, pin it with --min-pass-rate.
+    bar_from_receipts = False
+    if baseline is None:
+        recovered = _bar_from_receipts(receipts_dir)
+        if recovered is not None:
+            baseline = recovered
+            bar_from_receipts = True
     registry = _registry_from_baseline(baseline, min_pass_rate)
     if registry:
         decision, verdicts = decide(registry, scores, None)
@@ -218,11 +248,64 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
         "receipt_path": str(receipt_path) if receipt_path else None,
         "badge": _badge(decision, scores),
         "first_run": baseline is None,
+        "bar_from_receipts": bar_from_receipts,
     }
+
+
+def _bar_from_receipts(receipts_dir) -> dict | None:
+    """Reconstruct the ratcheted bar from prior eval-prove PROMOTE receipts.
+
+    The bar is the high-water mark (max pass-rate, max test-count) across past
+    PROMOTE receipts — the same value the local .wedge-baseline.json would hold.
+    Because it comes from the signed, hash-chained receipts, deleting the local
+    baseline file cannot reset it. Returns {test_pass_rate, test_count} or None
+    when there is genuinely no prior proof. Never raises."""
+    rdir = Path(receipts_dir)
+    if not rdir.exists():
+        return None
+    best_rate = best_count = None
+    try:
+        paths = list(rdir.rglob("*.json"))
+    except OSError:
+        return None
+    for p in paths:
+        try:
+            r = json.loads(p.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        if r.get("decision") != "PROMOTE":
+            continue
+        man = r.get("manifest") or {}
+        if man.get("source") != "eval-prove":
+            continue
+        sc = man.get("scores") or {}
+        pr, tc = sc.get("test_pass_rate"), sc.get("test_count")
+        if not isinstance(pr, (int, float)) or isinstance(pr, bool):
+            continue
+        if not isinstance(tc, (int, float)) or isinstance(tc, bool):
+            continue
+        best_rate = pr if best_rate is None else max(best_rate, pr)
+        best_count = tc if best_count is None else max(best_count, tc)
+    if best_rate is None:
+        return None
+    return {"test_pass_rate": float(best_rate), "test_count": float(best_count)}
 
 
 class WedgeUnmeasured(Exception):
     """Could not measure the suite — fail closed, no proof of an unmeasured run."""
+
+
+def _ignore_local_state(work_dir: Path, key_path: Path, baseline_file: Path) -> None:
+    """Gitignore the signing key, the bar and the wedge's JUnit in
+    work_dir/.gitignore. A path outside work_dir is not this repo's to ignore."""
+    root = work_dir.resolve()
+    lines = []
+    for p in (key_path, baseline_file, work_dir / JUNIT_NAME):
+        try:
+            lines.append(p.resolve().relative_to(root).as_posix())
+        except ValueError:
+            continue
+    ensure_gitignore(work_dir, lines)
 
 
 def _ensure_key(key_path: Path) -> None:
@@ -251,6 +334,10 @@ def _print_result(res: dict) -> None:
         for v in res["verdicts"]:
             if v["status"] == "BLOCK":
                 print(f"  - {v['metric']}: {v['reason']}", file=sys.stderr)
+    if res.get("bar_from_receipts"):
+        print("(bar recovered from signed receipts — the local baseline file was "
+              "missing. Deleting it does not reset the bar; pin a lower floor "
+              "deliberately with --min-pass-rate.)", file=sys.stderr)
     if res["receipt_path"]:
         rid = Path(res["receipt_path"]).stem
         print(f"receipt: {rid[:12]}…  ({res['receipt_path']})")

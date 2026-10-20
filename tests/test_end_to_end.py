@@ -37,6 +37,19 @@ HEALTHY = {"task_success_rate": 0.95, "json_schema_compliance": 1.0,
            "safety_pass_rate": 1.0, "latency_p95_s": 1.0, "cost_per_run_usd": 0.01}
 
 
+def test_vendored_tools_have_every_sibling_they_import(repo):
+    """A vendored tool that imports a core module nobody vendored works in the
+    plugin and breaks in the user's repo — only on the path that imports it."""
+    import re
+    tools = repo / "evals" / "tools"
+    core_modules = {p.stem for p in (PLUGIN / "core").glob("*.py")}
+    vendored = {p.stem for p in tools.glob("*.py")}
+    for f in tools.glob("*.py"):
+        imported = set(re.findall(r"^\s*(?:from|import)\s+(\w+)", f.read_text(), re.M))
+        missing = (imported & core_modules) - vendored
+        assert not missing, f"{f.name} imports {sorted(missing)}, which is not vendored"
+
+
 def test_init_creates_expected_files(repo):
     for f in ("evals/registry.yaml", "evals/tools/promote.py",
               "evals/tools/conductor.py", "evals/tools/steps.yaml",

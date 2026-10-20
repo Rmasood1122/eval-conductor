@@ -1,0 +1,3 @@
+# Shell scripts must stay LF on every checkout: a CRLF line breaks sh, and
+# core/py.sh runs on every command (Windows clones default to autocrlf).
+*.sh text eol=lf

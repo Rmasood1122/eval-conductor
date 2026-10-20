@@ -32,6 +32,7 @@ Usage: eval_init.py [--force] [--profile auto|pytest|plugin-eval|llm]
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
@@ -41,6 +42,8 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 CORE = PLUGIN_ROOT / "core"
 TEMPLATES = PLUGIN_ROOT / "templates"
+sys.path.insert(0, str(CORE))
+from gitignore import LOCAL_ARTIFACTS, ensure_gitignore  # noqa: E402
 PROFILES = ("auto", "pytest", "plugin-eval", "llm")
 
 FIXTURES_README = """\
@@ -155,19 +158,6 @@ def count_tests(repo: Path) -> int | None:
     return len([ln for ln in r.stdout.splitlines() if "::" in ln])
 
 
-def ensure_gitignore(repo: Path, lines: list[str]) -> None:
-    gi = repo / ".gitignore"
-    text = gi.read_text() if gi.exists() else ""
-    existing = set(text.splitlines())
-    add = [ln for ln in lines if ln not in existing]
-    if not add:
-        return
-    body = (text.rstrip("\n") + "\n" if text else "") + "\n".join(add) + "\n"
-    gi.write_text(body)
-    for ln in add:
-        print(f"  gitignore: added {ln}")
-
-
 def install(force: bool, profile: str) -> str:
     created: list[str] = []
     repo = Path.cwd()
@@ -212,9 +202,9 @@ def install(force: bool, profile: str) -> str:
     else:
         put(repo / "evals/candidate.example.json", src=TEMPLATES / "candidate.example.json")
     for f in ("promote.py", "compare.py", "adapters.py", "registry_lint.py",
-              "registry_diff_lint.py", "baseline.py", "conductor.py", "explain.py",
+              "registry_diff_lint.py", "baseline.py", "conductor.py", "gh_auth.py", "explain.py",
               "eval_receipt.py", "prereg.py", "wedge.py", "canonical.py",
-              "chain_state.py",
+              "chain_state.py", "gitignore.py",
               "steps.yaml"):
         put(repo / "evals/tools" / f, src=CORE / f)
     put(repo / "evals/fixtures/README.md", text=FIXTURES_README)
@@ -227,8 +217,7 @@ def install(force: bool, profile: str) -> str:
     # receipts themselves (evals/receipts/) ARE committed — they are the anchor
     # — so they are deliberately NOT ignored.
     import secrets as _secrets
-    ensure_gitignore(repo, ["evals/.receipt-key", "evals/.wedge-baseline.json",
-                            "evals/.eval-prove-junit.xml"])
+    ensure_gitignore(repo, LOCAL_ARTIFACTS)
     key_path = repo / "evals/.receipt-key"
     if not key_path.exists():  # never clobber an existing key — it would orphan old receipts
         key_path.write_text(_secrets.token_hex(32) + "\n")
@@ -245,8 +234,8 @@ def install(force: bool, profile: str) -> str:
 NEXT = {
     "pytest": """
 NEXT STEPS (in order):
- 1. python -m pytest -q --junitxml=evals/junit.xml; python evals/tools/adapters.py junit evals/junit.xml
- 2. python evals/tools/promote.py            -> first gate run: real numbers, threshold-only.
+ 1. __PY__ -m pytest -q --junitxml=evals/junit.xml; __PY__ evals/tools/adapters.py junit evals/junit.xml
+ 2. __PY__ evals/tools/promote.py            -> first gate run: real numbers, threshold-only.
  3. git add evals .github && git push        -> the gate is live in CI on this push.
  4. Add your LLM/eval metrics to evals/registry.yaml when you have a producer
     (adapters: promptfoo, scores). Then baseline.py --runs 3 for noise bands.
@@ -255,25 +244,36 @@ Never edit a threshold to turn a red gate green.""",
     "plugin-eval": """
 NEXT STEPS (in order):
  1. claude plugin eval . --trust-plugin --no-publish      -> evals/results/<ts>/
- 2. python evals/tools/adapters.py plugin-eval evals/results/
- 3. python evals/tools/promote.py            -> first gate run, threshold-only.
+ 2. __PY__ evals/tools/adapters.py plugin-eval evals/results/
+ 3. __PY__ evals/tools/promote.py            -> first gate run, threshold-only.
  4. Noise bands from data: repeat step 1 three times, convert each run
     (adapters.py plugin-eval evals/results/<ts>/ --out evals/runs/<n>.json),
-    then python evals/tools/baseline.py --from "evals/runs/*.json"
+    then __PY__ evals/tools/baseline.py --from "evals/runs/*.json"
  5. Add ANTHROPIC_API_KEY to CI secrets; the workflow is pre-filled.
 Never edit a threshold to turn a red gate green.""",
     "llm": """
 NEXT STEPS (in order):
  1. EDIT evals/registry.yaml — your real metrics, thresholds, blocking tiers.
  2. Make your eval run write evals/candidate.json (shape: candidate.example.json),
-    or convert its output: python evals/tools/adapters.py promptfoo|scores <file>
- 3. python evals/tools/promote.py            -> first gate run (threshold-only).
- 4. python evals/tools/baseline.py --cmd "<your eval cmd>" --runs 3
+    or convert its output: __PY__ evals/tools/adapters.py promptfoo|scores <file>
+ 3. __PY__ evals/tools/promote.py            -> first gate run (threshold-only).
+ 4. __PY__ evals/tools/baseline.py --cmd "<your eval cmd>" --runs 3
                                              -> measured noise bands.
  5. Write BLOCK fixtures (evals/fixtures/README.md) — prove each hard gate fires.
  6. Fill in the eval command in .github/workflows/eval-gate.yml and push.
 Never edit a threshold to turn a red gate green.""",
 }
+
+
+def interpreter_name() -> str:
+    """The command that started this interpreter, for copy-pasteable NEXT STEPS.
+    core/py.sh exports the candidate it picked (python3, python or `py -3`); run
+    any other way, fall back to the executable's own name."""
+    picked = os.environ.get("EVAL_CONDUCTOR_PY", "").strip()
+    if picked:
+        return picked
+    name = Path(sys.executable).name
+    return (name[:-4] if name.lower().endswith(".exe") else name) or "python"
 
 
 def main() -> int:
@@ -311,7 +311,7 @@ def main() -> int:
         if r.returncode != 0:
             return r.returncode
 
-    print(NEXT[profile])
+    print(NEXT[profile].replace("__PY__", interpreter_name()))
     return 0
 
 

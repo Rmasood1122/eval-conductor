@@ -109,6 +109,26 @@ def manifest_mismatch(raw: object, baseline: dict | None) -> str | None:
     return None
 
 
+def _shape_hint(candidate: Path) -> str:
+    example = candidate.parent / "candidate.example.json"
+    return f" (shape: {example})" if example.exists() else ""
+
+
+def missing_candidate_help(candidate: Path, registry: Path) -> str:
+    """What to do when there are no scores to judge yet — naming a next command
+    that exists from where the user is standing."""
+    lines = [f"FAIL: candidate not found: {candidate} — there are no scores to gate yet."]
+    if registry.exists():
+        lines.append(f"  Your eval run must write it{_shape_hint(candidate)}, or convert "
+                     f"output you already have with /eval-import.")
+    else:
+        lines += ["  Zero setup: /eval-prove proves your existing tests now — no "
+                  "registry, no candidate file.",
+                  "  Full gate:  /eval-init installs a registry and CI; your eval run "
+                  "(or /eval-import) then writes the candidate."]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -129,6 +149,25 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seals-dir", default="evals/seals")
     args = ap.parse_args(argv)
 
+    # The candidate comes first: with nothing to judge, every other message
+    # (a missing baseline included) is noise in front of the one that matters.
+    cp, rp = Path(args.candidate), Path(args.registry)
+    if not cp.exists():
+        print(missing_candidate_help(cp, rp), file=sys.stderr)
+        return 2
+    try:
+        raw = json.loads(cp.read_text())
+    except json.JSONDecodeError as exc:
+        print(f"FAIL: candidate {cp} is not valid JSON ({exc}) — your eval run "
+              f"must write a well-formed JSON file{_shape_hint(cp)}",
+              file=sys.stderr)
+        return 2
+    try:
+        scores = extract_scores(raw, args.candidate)
+    except ValueError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 2
+
     baseline = None
     bp = Path(args.baseline)
     if bp.exists():
@@ -138,33 +177,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"FAIL: baseline {bp} is not valid JSON ({exc}) — regenerate it "
                   f"with the baseline runner", file=sys.stderr)
             return 2
-    else:
-        print("WARNING: no baseline found — gating on thresholds only. "
-              "Run the baseline runner before trusting this gate.")
-
-    cp = Path(args.candidate)
-    if not cp.exists():
-        print(f"FAIL: candidate not found: {cp} — your eval run must write it "
-              f"(see evals/candidate.example.json)", file=sys.stderr)
-        return 2
-    try:
-        raw = json.loads(cp.read_text())
-    except json.JSONDecodeError as exc:
-        print(f"FAIL: candidate {cp} is not valid JSON ({exc}) — your eval run "
-              f"must write a well-formed JSON file (see evals/candidate.example.json)",
-              file=sys.stderr)
-        return 2
-    try:
-        scores = extract_scores(raw, args.candidate)
-    except ValueError as exc:
-        print(f"FAIL: {exc}", file=sys.stderr)
-        return 2
 
     stale = manifest_mismatch(raw, baseline)
     if stale:
         print(f"\nDECISION: BLOCK — {stale}", file=sys.stderr)
         return 1
-    rp = Path(args.registry)
     if rp.exists():
         tampered = registry_hash_mismatch(raw, rp)
         if tampered:
@@ -172,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     try:
-        registry = load_registry(Path(args.registry))
+        registry = load_registry(rp)
     except FileNotFoundError:
         print(f"FAIL: registry not found: {args.registry} — run /eval-init first",
               file=sys.stderr)
@@ -181,6 +198,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 2
 
+    if baseline is None:
+        print("WARNING: no baseline found — gating on thresholds only. "
+              "Run /eval-baseline before trusting regression detection.")
     decision, verdicts = decide(registry, scores, baseline)
 
     w = max(len(v.metric) for v in verdicts)

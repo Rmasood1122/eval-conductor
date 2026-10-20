@@ -1,12 +1,12 @@
 ---
-description: Verify the eval receipt chain — every PROMOTE/BLOCK is signed, unaltered, chained, and its decision matches its own verdicts
+description: Has anyone altered past eval results? Check every signed PROMOTE/BLOCK receipt — unaltered, one unbroken chain, and each decision matching its own verdicts
 argument-hint: "[--receipts-dir DIR] [--registry PATH] [--structure-only]"
 ---
 
 Verify the tamper-evident eval receipt log in the user's repository:
 
 ```
-TOOL="evals/tools/eval_receipt.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/eval_receipt.py"; python3 "$TOOL" verify $ARGUMENTS
+TOOL="evals/tools/eval_receipt.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/eval_receipt.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" verify $ARGUMENTS
 ```
 
 (Runs from the installed plugin — no `/eval-init` needed. Verifies whatever receipts exist under `evals/receipts/` (e.g. from `/eval-prove`); says so if none do.)

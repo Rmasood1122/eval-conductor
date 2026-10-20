@@ -1,12 +1,12 @@
 ---
-description: Run the eval release gate — candidate vs baseline under the registry, PROMOTE or BLOCK with a per-metric verdict table
+description: Did this change make my evals worse? Judge the latest scores against the baseline and thresholds, PROMOTE or BLOCK, with a per-metric table that says why
 argument-hint: "[--candidate PATH] [--baseline PATH] [--registry PATH]"
 ---
 
 Run the release gate in the user's repository:
 
 ```
-TOOL="evals/tools/promote.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/promote.py"; python3 "$TOOL" $ARGUMENTS
+TOOL="evals/tools/promote.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/promote.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 (Runs from the installed plugin, but the gate needs a registry: if `evals/registry.yaml` doesn't exist yet, run `/eval-init` first to create one, then re-run this.)

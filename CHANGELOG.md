@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.4.2 — 2026-10-20
+
+Activation fixes: every command now runs on Windows, nothing strands a new user,
+and the PyPI package finally runs the same engine as the plugin.
+
+- **Windows: commands no longer die on the `python3` Store stub.** Every command
+  line runs through `core/py.sh`, which probes `python3`, `python`, then `py -3`
+  by actually running them (Python 3.10+) instead of trusting `command -v`, and
+  prints one install message (exit 127) when none works. `/eval-init`'s NEXT STEPS
+  name the interpreter that really ran. `*.sh` is pinned to LF.
+- **`/eval-seal` with no registry exits 2 and writes nothing** (it wrote an unsigned
+  seal of `registry_sha256: null` and exited 0). It says to run `/eval-init` first.
+- **`/eval-prove` gitignores the signing key it creates.** `evals/.receipt-key`,
+  `evals/.wedge-baseline.json` and `.eval-prove-junit.xml` are added to `.gitignore`
+  before the first write, so `git add -A` can't stage the key. `/eval-init` now
+  ignores `.eval-prove-junit.xml` where the wedge actually writes it.
+- **No more dead-end errors.** `/eval-gate` and `/eval-explain` with no candidate
+  lead with that error and name `/eval-prove` and `/eval-init` (or the example and
+  `/eval-import` once installed); the no-baseline warning only prints when a
+  decision is made. `/eval-verify` with no receipts names `/eval-prove`.
+  `/eval-prove --run` works in repos without a pytest suite (it was refused with
+  "use --run"), and a missing pytest is named, with the pip command.
+- **GitHub token read in a URL-free module.** `core/gh_auth.py` reads
+  `GITHUB_TOKEN`; `core/conductor.py` builds the request and reads no environment,
+  and sends the token only to `api.github.com`. A test fails if any shipped `.py`
+  file both reads the environment and contains a URL.
+- **Removed the unused `userConfig` fields** (`receipt_key`, `github_token`):
+  Claude Code exports userConfig only to hooks and MCP servers, and this plugin
+  has neither. `EVAL_RECEIPT_KEY`, the auto-generated `evals/.receipt-key` and
+  `GITHUB_TOKEN` work as before.
+- **PyPI package synced with the plugin.** `src/eval_conductor/_core/` had drifted
+  and missed the 1.4.1 fixes: `eval-conductor prove` on PyPI 1.4.1 printed a
+  brightgreen "PROVEN 0/0" badge for a run with zero tests. A parity test now
+  fails on any drift.
+- **Descriptions lead with the user's problem** (all commands, both skills, the
+  manifest and the marketplace listing).
+- CI runs on `windows-latest` as well as `ubuntu-latest`. A live harness
+  (`tests/test_commands_live.py`) runs every command line the way Claude does, in
+  fresh git repos. Tests: 254 → 365.
+
 ## 1.4.1 — 2026-10-05
 
 Wedge hardening + an honest-limits correction, from deep adversarial testing. The

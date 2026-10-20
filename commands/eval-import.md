@@ -1,12 +1,12 @@
 ---
-description: Convert scores you already produce — JUnit XML, `claude plugin eval` results, promptfoo output, or a flat JSON of numbers — into evals/candidate.json for the gate
+description: Already have eval scores? Turn JUnit XML, `claude plugin eval` results, promptfoo output or a JSON of numbers into a candidate the gate can judge
 argument-hint: "junit <report.xml> | plugin-eval <evals/results/ or aggregate-result.json> | promptfoo <out.json> | scores <file.json> [--out PATH]"
 ---
 
 Turn existing eval output into a gateable candidate:
 
 ```
-TOOL="evals/tools/adapters.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/adapters.py"; python3 "$TOOL" $ARGUMENTS
+TOOL="evals/tools/adapters.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/adapters.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 (Runs from the installed plugin — no `/eval-init` needed. Prefers a vendored `evals/tools/adapters.py` if present, else the plugin's own copy.)

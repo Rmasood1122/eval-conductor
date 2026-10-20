@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "core"))
 
@@ -180,6 +182,25 @@ def test_cli_seal_then_check(tmp_path):
                         "--seals-dir", str(sd), "--receipt-key", str(keyfile),
                         "--require-seal"], capture_output=True, text=True)
     assert r.returncode == 2, r.stdout + r.stderr
+
+
+# ---------------------------------------------------------------- no registry
+def test_create_seal_refuses_a_missing_registry(tmp_path):
+    """A seal of nothing (registry_sha256 null) commits to no bar at all, yet
+    would sit in the chain looking like a pre-registration."""
+    sd = _seals_dir(tmp_path)
+    assert prereg.create_seal(registry_path=tmp_path / "registry.yaml",
+                              seals_dir=sd, key=KEY) is None
+    assert not sd.exists()
+
+
+@pytest.mark.parametrize("copy", ["core", "src/eval_conductor/_core"])
+def test_cli_seal_without_registry_exits_2_and_writes_nothing(tmp_path, copy):
+    r = subprocess.run([sys.executable, str(ROOT / copy / "prereg.py"), "seal"],
+                       cwd=tmp_path, capture_output=True, text=True)
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "/eval-init" in r.stderr
+    assert not (tmp_path / "evals").exists()
 
 
 if __name__ == "__main__":

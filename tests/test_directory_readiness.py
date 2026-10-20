@@ -3,9 +3,9 @@ plugin is submitted to (and approved in) Anthropic's plugin directory.
 
 This is the verifiable-evals discipline turned on our own submission: instead of
 asserting "it's fine," every claim a reviewer cares about is a mechanical check
-that runs in CI. Grouped into ten categories (manifest, userConfig, layout,
-secrets, network, code-safety, file-writes, docs/listing, functional smoke, and
-a self-count). Each check is a (id, description, fn) triple; fn returns
+that runs in CI. Grouped into ten categories (manifest, credential config,
+layout, secrets, network, code-safety, file-writes, docs/listing, functional
+smoke, and a self-count). Each check is a (id, description, fn) triple; fn returns
 (ok: bool, detail: str).
 
 Grounded in the Claude Code plugin manifest reference and the directory
@@ -13,6 +13,7 @@ submission rules. Filesystem-based (no git dependency) so it also holds for a
 vendored copy.
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -35,9 +36,6 @@ PY_FILES = {p: p.read_text(encoding="utf-8")
 ALL_SRC = "\n".join(PY_FILES.values())
 RESERVED_PREFIXES = ("claude-", "anthropic-", "anthropics-", "cc-plugin-")
 RESERVED_EXACT = {"claude", "anthropic", "anthropics", "claude-code", "claude-mods"}
-UCFG_ALLOWED = {"type", "title", "description", "required", "default",
-                "options", "multiple", "sensitive", "min", "max"}
-UCFG_TYPES = {"string", "number", "boolean", "directory", "file"}
 EXPECTED_COMMANDS = {"eval-init", "eval-gate", "eval-baseline", "eval-import",
                      "eval-explain", "eval-verify", "eval-prove", "eval-seal",
                      "conductor"}
@@ -88,26 +86,42 @@ def m_icon_exists(_):
 
 
 # ==========================================================================
-# B. USERCONFIG CORRECTNESS (6)
+# B. CREDENTIAL CONFIG (6)
+# Claude Code exports userConfig values only to hooks and MCP servers, and this
+# plugin ships neither, so a userConfig block would be a settings prompt whose
+# answer nothing ever reads. Keys come from the environment or the key file.
 # ==========================================================================
-def u_present(_): return isinstance(PLUGIN.get("userConfig"), dict), "userConfig block"
-def u_keys(_):
-    return set(PLUGIN.get("userConfig", {})) == {"receipt_key", "github_token"}, \
-        str(set(PLUGIN.get("userConfig", {})))
-def u_strict_keys(_):
-    for k, v in PLUGIN.get("userConfig", {}).items():
-        bad = set(v) - UCFG_ALLOWED
-        if bad:
-            return False, f"{k} has disallowed keys {bad}"
-    return True, "all options strict"
-def u_types(_):
-    return all(v.get("type") in UCFG_TYPES for v in PLUGIN.get("userConfig", {}).values()), "types ok"
-def u_sensitive(_):
-    return all(v.get("sensitive") is True for v in PLUGIN.get("userConfig", {}).values()), \
-        "both sensitive"
-def u_title_desc(_):
-    return all(v.get("title") and v.get("description") for v in PLUGIN.get("userConfig", {}).values()), \
-        "title+description present"
+def u_no_userconfig(_):
+    return "userConfig" not in PLUGIN, f"keys={sorted(PLUGIN)}"
+def u_nothing_reads_userconfig(_):
+    cmds = "\n".join(p.read_text() for p in (ROOT / "commands").glob("*.md"))
+    hits = [s for s in ("CLAUDE_PLUGIN_OPTION", "user_config") if s in ALL_SRC + cmds]
+    return not hits, f"references {hits}"
+def u_env_key_resolves(_):
+    import eval_receipt as er
+    saved = os.environ.get(er.KEY_ENV)
+    os.environ[er.KEY_ENV] = "ab" * 32
+    try:
+        key = er.load_key_from(str(ROOT / "no-such-key-file"))
+    finally:
+        if saved is None:
+            os.environ.pop(er.KEY_ENV, None)
+        else:
+            os.environ[er.KEY_ENV] = saved
+    return key == bytes.fromhex("ab" * 32), "EVAL_RECEIPT_KEY wins over the key file"
+def u_key_file_default(_):
+    w = PY_FILES.get(CORE / "wedge.py", "")
+    r = PY_FILES.get(CORE / "eval_receipt.py", "")
+    return ('DEFAULT_KEY_PATH = "evals/.receipt-key"' in w
+            and 'DEFAULT_KEY_PATH = "evals/.receipt-key"' in r), "evals/.receipt-key default"
+def u_github_token_env(_):
+    return "GITHUB_TOKEN" in ALL_SRC, "GITHUB_TOKEN honoured for --verify-evidence"
+def u_docs_no_userconfig(_):
+    docs = [d for d in ("SECURITY.md", "PRIVACY.md", "README.md")
+            if "userConfig" in (ROOT / d).read_text()]
+    sec = (ROOT / "SECURITY.md").read_text()
+    ok = not docs and "EVAL_RECEIPT_KEY" in sec and "GITHUB_TOKEN" in sec
+    return ok, f"userConfig still described in {docs}"
 
 
 # ==========================================================================
@@ -353,12 +367,12 @@ CHECKS = [
     ("M10", "license MIT + LICENSE file", m_license),
     ("M11", "keywords is a non-empty string list", m_keywords),
     ("M12", "icon path exists on disk", m_icon_exists),
-    ("U1", "userConfig block present", u_present),
-    ("U2", "userConfig keys == {receipt_key, github_token}", u_keys),
-    ("U3", "userConfig options use only allowed keys", u_strict_keys),
-    ("U4", "userConfig option types valid", u_types),
-    ("U5", "credential options are sensitive:true", u_sensitive),
-    ("U6", "userConfig options have title+description", u_title_desc),
+    ("U1", "no userConfig (nothing reads it: no hooks, no MCP)", u_no_userconfig),
+    ("U2", "no code or command reads a userConfig value", u_nothing_reads_userconfig),
+    ("U3", "EVAL_RECEIPT_KEY env still resolves the signing key", u_env_key_resolves),
+    ("U4", "auto-generated key file stays evals/.receipt-key", u_key_file_default),
+    ("U5", "GITHUB_TOKEN env still honoured for --verify-evidence", u_github_token_env),
+    ("U6", "docs describe env/file keys, not userConfig", u_docs_no_userconfig),
     ("C1", "no top-level bin/ (claude.ai refuses it)", c_no_bin),
     ("C2", "no CLAUDE.md at plugin root", c_no_root_claudemd),
     ("C3", "commands/ directory exists", c_commands_dir),

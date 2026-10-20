@@ -1,12 +1,12 @@
 ---
-description: Build or refresh the eval baseline — run the eval N times and compute mean + 2-sigma noise bands per metric
+description: Evals flaky, or a real regression? Run your eval several times and measure each metric's noise band, so the gate blocks real drops and lets ordinary noise through
 argument-hint: "--cmd \"<eval command>\" [--runs 3] | --from \"evals/runs/*.json\""
 ---
 
 Build the baseline the gate compares against:
 
 ```
-TOOL="evals/tools/baseline.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/baseline.py"; python3 "$TOOL" $ARGUMENTS
+TOOL="evals/tools/baseline.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/baseline.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 Rules to hold the user to (they exist because shortcuts here produce fake

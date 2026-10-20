@@ -32,7 +32,13 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml
+except ImportError:
+    sys.stderr.write(
+        "eval-conductor: this command needs PyYAML. Install it with:\n"
+        "  pip install pyyaml   (add --break-system-packages if pip refuses)\n")
+    raise SystemExit(2)
 
 STEPS_FILE = Path(__file__).parent / "steps.yaml"
 DEFAULT_STATE = Path("evals/conductor_state.json")
@@ -81,16 +87,18 @@ def repo_slug_from_git() -> str | None:
 
 
 def fetch_json(url: str) -> dict | None:
-    """GET url -> parsed JSON, or None on any failure. Uses GITHUB_TOKEN if set
-    (private repos / rate limits); anonymous works for public repos."""
+    """GET url -> parsed JSON, or None on any failure. Sends GITHUB_TOKEN when
+    set (private repos / rate limits), and only to api.github.com; anonymous
+    works for public repos. The token is read in gh_auth.py, never here."""
     import json as _json
-    import os
+    import urllib.parse
     import urllib.request
     import urllib.error
+    from gh_auth import github_token
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json",
                                                "User-Agent": "eval-conductor"})
-    tok = os.environ.get("GITHUB_TOKEN")
-    if tok:
+    tok = github_token()
+    if tok and urllib.parse.urlsplit(url).hostname == "api.github.com":
         req.add_header("Authorization", f"Bearer {tok}")
     try:
         with urllib.request.urlopen(req, timeout=15) as r:

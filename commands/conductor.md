@@ -1,5 +1,5 @@
 ---
-description: Evidence-gated 27-step build ledger — init, status, check off steps with CI evidence, audit; refuses placeholder proof and step-skipping
+description: Is this step really done? Run a project on the 27-step evidence ledger, where a step closes only on a real, green CI run and placeholder proof or skipped steps are refused
 argument-hint: "init --project NAME --archetype A1..A5 | status | next | guide | check --evidence URL | defer N --trigger ... | na N --justify ... | reopen N | audit"
 ---
 
@@ -7,7 +7,7 @@ Operate the conductor — the 27-step eval build method as an enforcing CLI.
 State lives in `evals/conductor_state.json` and is committed like code.
 
 ```
-TOOL="evals/tools/conductor.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/conductor.py"; python3 "$TOOL" $ARGUMENTS
+TOOL="evals/tools/conductor.py"; [ -f "$TOOL" ] || TOOL="${CLAUDE_PLUGIN_ROOT}/core/conductor.py"; sh "${CLAUDE_PLUGIN_ROOT}/core/py.sh" "$TOOL" $ARGUMENTS
 ```
 
 (Runs from the installed plugin. `conductor init` (or `/eval-init --conductor --project NAME --archetype A2`) creates the ledger state in `evals/conductor_state.json` if it doesn't exist yet.)

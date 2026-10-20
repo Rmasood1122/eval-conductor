@@ -156,6 +156,16 @@ def test_auto_key_generated_and_signs(tmp_path):
     assert r.get("signing_version") == er.SIGNING and r.get("signature")
 
 
+def test_local_artifacts_are_gitignored(tmp_path):
+    """The key, the bar and the wedge's own JUnit are per-machine; `git add -A`
+    must never stage the signing key."""
+    _run(tmp_path, _junit(tmp_path, tests=3, failures=0))
+    lines = (tmp_path / ".gitignore").read_text().splitlines()
+    assert {"evals/.receipt-key", "evals/.wedge-baseline.json",
+            ".eval-prove-junit.xml"} <= set(lines)
+    assert not any("receipts" in ln for ln in lines), "receipts must stay committable"
+
+
 # --------------------------------------------------------------- zero-config
 def test_no_registry_file_anywhere(tmp_path):
     _run(tmp_path, _junit(tmp_path, tests=4, failures=0))
@@ -172,6 +182,22 @@ def test_undetectable_suite_exits_2_with_guidance(tmp_path):
     assert "Traceback" not in r.stderr
     assert ("junit" in (r.stdout + r.stderr).lower()
             or "test" in (r.stdout + r.stderr).lower())
+
+
+def test_interpreter_without_pytest_says_so(tmp_path, monkeypatch):
+    """`could not run the test suite` hides the fix. When the interpreter that
+    runs the wedge has no pytest, name it and the install command."""
+    (tmp_path / "tests").mkdir()
+
+    def no_pytest(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 1, "", f"{cmd[0]}: No module named pytest\n")
+    monkeypatch.setattr(wedge.subprocess, "run", no_pytest)
+    import pytest
+    with pytest.raises(wedge.WedgeUnmeasured, match="pytest is not installed") as exc:
+        wedge.run(work_dir=tmp_path, receipts_dir=tmp_path / "r",
+                  baseline_file=tmp_path / "bl.json", key_path=tmp_path / "k")
+    assert "-m pip install pytest" in str(exc.value)
+    assert "--junit" in str(exc.value)
 
 
 # --------------------------------------------------------------- CLI

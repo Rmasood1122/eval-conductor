@@ -1,6 +1,6 @@
 ---
 name: eval-gates
-description: Use whenever an eval/release gate, threshold, baseline, noise band, or metric registry is being designed, reviewed, or debugged — and ALWAYS when a gate is red and someone wants to raise/lower a threshold, widen a band, downgrade a metric, refresh the baseline, or otherwise make CI pass; also when a score is NaN/missing or a check "passed" suspiciously. Covers fail-closed gate design, BLOCK fixtures, and the failure modes naive gates miss.
+description: Use when the question is whether a change made an AI system or test suite worse, or whether an eval result can be trusted — "did my prompt change make it worse", "my evals are flaky", "can I bump the threshold to get CI green", "the score came back NaN", "set up evals before we ship". ALWAYS use when a gate is red and someone wants to raise/lower a threshold, widen a noise band, downgrade a metric, refresh the baseline, or otherwise make CI pass, and when a check "passed" suspiciously. Covers fail-closed release gates, thresholds, baselines, noise bands, metric registries, BLOCK fixtures, and the failure modes naive gates miss.
 ---
 
 # Fail-closed eval gates
