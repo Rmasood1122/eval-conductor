@@ -3,7 +3,7 @@
   "name": "eval-conductor",
   "displayName": "Eval Conductor",
   "version": "1.4.3",
-  "description": "Know whether a change made your AI system worse, and prove it. A fail-closed CI gate for the scores you already produce (pytest, claude plugin eval, promptfoo, any JSON) that BLOCKs on a regression, a NaN or missing metric, a stale baseline or a quietly edited threshold. Every PROMOTE/BLOCK is a signed, tamper-evident receipt, and you can seal the bar before a run to prove it wasn't moved after the results came in. /eval-prove turns your existing tests into a signed proof and PR badge with zero setup. Includes a 27-step evidence-gated build ledger.",
+  "description": "Works in Claude Code. Know whether a change made your AI system worse, and prove it. A fail-closed CI gate for the scores you already produce (pytest, claude plugin eval, promptfoo, any JSON) that BLOCKs on a regression, a NaN or missing metric, a stale baseline or a quietly edited threshold. Every PROMOTE/BLOCK is a signed, tamper-evident receipt, and you can seal the bar before a run to prove it wasn't moved after the results came in. /eval-prove turns your existing tests into a signed proof and PR badge with zero setup. Includes a 27-step evidence-gated build ledger.",
   "author": {
     "name": "Rehan Masood",
     "email": "rmasood524@gmail.com",
