@@ -1,6 +1,7 @@
 ---
 description: Can you prove the bar was not moved after the results came in? Seal thresholds and noise bands before the run, so the decision proves it was judged against a bar fixed in advance
 argument-hint: "[--registry PATH] [--seals-dir DIR] [--note TEXT] [--no-bands]"
+disable-model-invocation: true
 ---
 
 Seal the current eval bar in the user's repository, as a pre-registration:
