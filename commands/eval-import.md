@@ -1,6 +1,7 @@
 ---
 description: Already have eval scores? Turn JUnit XML, `claude plugin eval` results, promptfoo output or a JSON of numbers into a candidate the gate can judge
 argument-hint: "junit <report.xml> | plugin-eval <evals/results/ or aggregate-result.json> | promptfoo <out.json> | scores <file.json> [--out PATH]"
+disable-model-invocation: true
 ---
 
 Turn existing eval output into a gateable candidate:

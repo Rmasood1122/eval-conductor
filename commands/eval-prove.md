@@ -1,6 +1,7 @@
 ---
 description: Need proof your tests pass? Zero setup, one command — runs your existing tests, signs a tamper-evident receipt, prints a PR badge, and blocks later regressions
 argument-hint: "[--junit report.xml] [--run \"CMD\"] [--min-pass-rate 0.95]"
+disable-model-invocation: true
 ---
 
 Turn the user's existing tests into a shareable proof, zero config:
