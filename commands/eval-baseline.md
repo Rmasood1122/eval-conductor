@@ -1,6 +1,7 @@
 ---
 description: Evals flaky, or a real regression? Run your eval several times and measure each metric's noise band, so the gate blocks real drops and lets ordinary noise through
 argument-hint: "--cmd \"<eval command>\" [--runs 3] | --from \"evals/runs/*.json\""
+disable-model-invocation: true
 ---
 
 Build the baseline the gate compares against:
