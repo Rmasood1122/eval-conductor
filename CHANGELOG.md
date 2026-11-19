@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.4 — 2026-11-19
 
 ### Fail-closed gaps (audit, Nov 2026)
 
