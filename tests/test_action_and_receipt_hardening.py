@@ -31,6 +31,43 @@ def _step(i):
     return yaml.safe_load((ROOT / "action.yml").read_text())["runs"]["steps"][i]
 
 
+# Imported by every python the step starts (via PYTHONPATH), on any OS: it
+# stands in for pip (no network) and for the eval-conductor executable, so the
+# test needs no POSIX shebang stubs and runs the same on the Windows job.
+_SITECUSTOMIZE = """
+import os, subprocess, sys
+_argv = list(getattr(sys, "orig_argv", []))
+if _argv[1:3] == ["-m", "pip"]:
+    print("PIP " + " ".join(_argv[1:]), flush=True)
+    os._exit(0)
+_real_call = subprocess.call
+def _call(cmd, *a, **kw):
+    if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == "eval-conductor":
+        for x in cmd[1:]:
+            print("ARG<%s>" % x, flush=True)
+        return 0
+    return _real_call(cmd, *a, **kw)
+subprocess.call = _call
+"""
+
+
+def _bash():
+    """The bash a GitHub runner uses for `shell: bash`: Git Bash on Windows.
+    A bare "bash" there resolves to the WSL launcher in System32."""
+    if sys.platform != "win32":
+        return shutil.which("bash")
+    git = shutil.which("git")
+    if git:
+        for up in Path(git).resolve().parents:
+            cand = up / "bin" / "bash.exe"
+            if cand.exists():
+                return str(cand)
+    found = shutil.which("bash")
+    if found and "system32" not in found.lower():
+        return found
+    raise RuntimeError("Git Bash not found; GitHub's windows runners ship it")
+
+
 def _run_step(step, env, tmp_path):
     """Run a composite step's script the way the runner does: inputs become
     env values, and anything still written as ${{ inputs.x }} is substituted
@@ -38,30 +75,30 @@ def _run_step(step, env, tmp_path):
     script = step["run"]
     for k, v in env.items():
         script = script.replace("${{ inputs.%s }}" % k, v)
-    bindir = tmp_path / "bin"
-    bindir.mkdir(exist_ok=True)
-    stub = bindir / "eval-conductor"
-    stub.write_text("#!/bin/sh\nfor a in \"$@\"; do echo \"ARG<$a>\"; done\n")
-    stub.chmod(0o755)
-    pip = bindir / "python"
-    real = shutil.which("python3")
-    # `python -m pip` must not hit the network; anything else is real python
-    pip.write_text(f'#!/bin/sh\nif [ "$1" = "-m" ] && [ "$2" = "pip" ]; then '
-                   f'echo "PIP $*"; exit 0; fi\nexec "{real}" "$@"\n')
-    pip.chmod(0o755)
+    stubdir = tmp_path / "stub"
+    stubdir.mkdir(exist_ok=True)
+    (stubdir / "sitecustomize.py").write_text(_SITECUSTOMIZE)
     step_env = {k: v.replace("${{ inputs.", "").replace(" }}", "")
                 for k, v in (step.get("env") or {}).items()}
-    full = dict(os.environ, PATH=f"{bindir}:{os.environ['PATH']}")
+    full = dict(os.environ, PYTHONPATH=str(stubdir))
+    if not shutil.which("python"):          # the runner always has `python`
+        bindir = tmp_path / "bin"
+        bindir.mkdir(exist_ok=True)
+        shim = bindir / "python"
+        shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+        shim.chmod(0o755)
+        full["PATH"] = f"{bindir}{os.pathsep}{full['PATH']}"
     for name, ref in step_env.items():
         full[name] = env.get(ref, "")
-    return subprocess.run(["bash", "-c", script], env=full, cwd=tmp_path,
+    return subprocess.run([_bash(), "-c", script], env=full, cwd=tmp_path,
                           capture_output=True, text=True)
 
 
 def test_args_cannot_run_shell(tmp_path):
     marker = tmp_path / "pwned"
+    m = marker.as_posix()
     r = _run_step(_step(2), {"command": "prove",
-                             "args": f'--junit r.xml $(touch {marker}); touch {marker}',
+                             "args": f'--junit r.xml $(touch {m}); touch {m}',
                              "receipt-key": ""}, tmp_path)
     assert not marker.exists(), r.stdout + r.stderr
 
@@ -77,7 +114,7 @@ def test_args_quoting_still_works(tmp_path):
 
 def test_command_is_allowlisted(tmp_path):
     marker = tmp_path / "pwned"
-    r = _run_step(_step(2), {"command": f"prove; touch {marker}", "args": "",
+    r = _run_step(_step(2), {"command": f"prove; touch {marker.as_posix()}", "args": "",
                              "receipt-key": ""}, tmp_path)
     assert r.returncode != 0
     assert not marker.exists()
@@ -85,7 +122,7 @@ def test_command_is_allowlisted(tmp_path):
 
 def test_version_cannot_run_shell(tmp_path):
     marker = tmp_path / "pwned"
-    r = _run_step(_step(1), {"version": f'==1.0"; touch {marker}; echo "'},
+    r = _run_step(_step(1), {"version": f'==1.0"; touch {marker.as_posix()}; echo "'},
                   tmp_path)
     assert not marker.exists(), r.stdout + r.stderr
     assert r.returncode != 0
