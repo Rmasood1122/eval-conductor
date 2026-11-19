@@ -41,11 +41,30 @@ runs:
 
     - name: Install eval-conductor
       shell: bash
-      run: python -m pip install --upgrade "eval-conductor${{ inputs.version }}"
+      env:
+        EC_VERSION: ${{ inputs.version }}
+      run: |
+        # Inputs reach the shell only through env, never spliced into the script.
+        if ! [[ "$EC_VERSION" =~ ^([=!~<>]=?=?[0-9A-Za-z.*+!-]+(,[=!~<>]=?=?[0-9A-Za-z.*+!-]+)*)?$ ]]; then
+          echo "::error::version must be a version spec like ==1.4.4 (got an invalid value)"
+          exit 2
+        fi
+        python -m pip install --upgrade "eval-conductor${EC_VERSION}"
 
-    - name: Run eval-conductor ${{ inputs.command }}
+    - name: Run eval-conductor
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
         EVAL_RECEIPT_KEY: ${{ inputs.receipt-key }}
-      run: eval-conductor ${{ inputs.command }} ${{ inputs.args }}
+        EC_COMMAND: ${{ inputs.command }}
+        EC_ARGS: ${{ inputs.args }}
+      run: |
+        case "$EC_COMMAND" in
+          prove|gate|verify) ;;
+          *) echo "::error::command must be prove, gate or verify"; exit 2 ;;
+        esac
+        # shlex splits args like a shell would, quotes included, but runs no
+        # command substitution, so $(...) or ; inside args stays a literal.
+        python -c 'import os, shlex, subprocess, sys
+        sys.exit(subprocess.call(["eval-conductor", os.environ["EC_COMMAND"],
+                                  *shlex.split(os.environ.get("EC_ARGS", ""))]))'

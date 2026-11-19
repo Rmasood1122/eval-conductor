@@ -5,7 +5,7 @@
   "description": "Prove your tests/evals didn't regress. Fail-closed release gate for scores you already produce (pytest, promptfoo, JUnit, any JSON) with signed, tamper-evident, pre-registered receipts. Gate via MCP tools; design gates via skills.",
   "author": {
     "name": "Rehan Masood",
-    "email": "rmasood524@gmail.com",
+    "email": "rmasood112224@gmail.com",
     "url": "https://github.com/Rmasood1122"
   },
   "homepage": "https://github.com/Rmasood1122/eval-conductor",

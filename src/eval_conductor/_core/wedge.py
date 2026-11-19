@@ -123,6 +123,15 @@ def _registry_from_baseline(baseline: dict | None, min_pass_rate: float | None) 
             "threshold": float(baseline["test_count"]), "noise_band": 0.0,
             "blocking": "hard",
         })
+        # Skipping a failing test keeps test_count and the pass rate intact, so
+        # the executed count is ratcheted too. Bars written before this field
+        # existed have no value for it and are gated on the rest.
+        if isinstance(baseline.get("test_executed"), (int, float)):
+            reg.append({
+                "name": "test_executed", "direction": "higher_better",
+                "threshold": float(baseline["test_executed"]), "noise_band": 0.0,
+                "blocking": "hard",
+            })
     reg.append({
         "name": "test_failures", "direction": "lower_better",
         "threshold": 1e9, "noise_band": 0.0, "blocking": "monitor_only",
@@ -136,13 +145,22 @@ def _verdict_dicts(verdicts) -> list:
 
 
 # --------------------------------------------------------------- badge
+def _passed(scores: dict) -> int:
+    """Tests that ran and passed. Skipped tests are not passes."""
+    executed = scores.get("test_executed", scores["test_count"])
+    return int(executed - scores.get("test_failures", 0))
+
+
 def _badge(decision: str, scores: dict) -> str:
-    passed = int(round(scores["test_pass_rate"] * scores["test_count"]))
+    passed = _passed(scores)
     total = scores["test_count"]
-    if decision == "PROMOTE":
+    if decision != "PROMOTE":
+        label, color = f"regressed {passed}/{total}", "red"
+    elif passed == total:
         label, color = f"proven {passed}/{total}", "brightgreen"
     else:
-        label, color = f"regressed {passed}/{total}", "red"
+        # Not worse than the bar, but not all passing: never paint it green.
+        label, color = f"passing {passed}/{total}", "yellow"
     label_enc = label.replace(" ", "%20").replace("/", "%2F")
     url = f"https://img.shields.io/badge/evals-{label_enc}-{color}"
     return f"![evals]({url})"
@@ -223,12 +241,12 @@ def run(*, work_dir, junit_path=None, run_cmd=None, receipts_dir=DEFAULT_RECEIPT
     # 4. ratchet the bar forward on PROMOTE only; a BLOCK never lowers it
     if decision == "PROMOTE":
         new_bar = {"test_pass_rate": scores["test_pass_rate"],
-                   "test_count": scores["test_count"]}
+                   "test_count": scores["test_count"],
+                   "test_executed": scores["test_executed"]}
         if baseline is not None:
-            new_bar["test_pass_rate"] = max(baseline["test_pass_rate"],
-                                            scores["test_pass_rate"])
-            new_bar["test_count"] = max(baseline["test_count"],
-                                        scores["test_count"])
+            for k in new_bar:
+                if isinstance(baseline.get(k), (int, float)):
+                    new_bar[k] = max(baseline[k], new_bar[k])
         baseline_file.parent.mkdir(parents=True, exist_ok=True)
         baseline_file.write_text(json.dumps(new_bar, indent=2) + "\n")
 
@@ -263,7 +281,7 @@ def _bar_from_receipts(receipts_dir) -> dict | None:
     rdir = Path(receipts_dir)
     if not rdir.exists():
         return None
-    best_rate = best_count = None
+    best_rate = best_count = best_exec = None
     try:
         paths = list(rdir.rglob("*.json"))
     except OSError:
@@ -286,9 +304,15 @@ def _bar_from_receipts(receipts_dir) -> dict | None:
             continue
         best_rate = pr if best_rate is None else max(best_rate, pr)
         best_count = tc if best_count is None else max(best_count, tc)
+        ex = sc.get("test_executed")
+        if isinstance(ex, (int, float)) and not isinstance(ex, bool):
+            best_exec = ex if best_exec is None else max(best_exec, ex)
     if best_rate is None:
         return None
-    return {"test_pass_rate": float(best_rate), "test_count": float(best_count)}
+    bar = {"test_pass_rate": float(best_rate), "test_count": float(best_count)}
+    if best_exec is not None:
+        bar["test_executed"] = float(best_exec)
+    return bar
 
 
 class WedgeUnmeasured(Exception):
@@ -322,11 +346,14 @@ def _ensure_key(key_path: Path) -> None:
 # --------------------------------------------------------------- CLI
 def _print_result(res: dict) -> None:
     s = res["scores"]
-    passed = int(round(s["test_pass_rate"] * s["test_count"]))
+    passed = _passed(s)
+    skipped = s.get("test_skipped", 0)
+    skip_note = f", {skipped} skipped" if skipped else ""
     if res["decision"] == "PROMOTE":
         tag = "first run — bar captured" if res["first_run"] else "no regression"
-        print(f"\nPROVEN ({tag}): {passed}/{s['test_count']} tests pass "
-              f"({s['test_pass_rate']*100:.1f}%)")
+        head = "PROVEN" if passed == s["test_count"] else "NOT WORSE (not all passing)"
+        print(f"\n{head} ({tag}): {passed}/{s['test_count']} tests pass"
+              f"{skip_note} ({s['test_pass_rate']*100:.1f}% of executed)")
     else:
         print(f"\nBLOCKED: regression vs your captured bar — "
               f"{passed}/{s['test_count']} tests pass "
