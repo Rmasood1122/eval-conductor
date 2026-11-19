@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eval-conductor"
-version = "1.4.3"
+version = "1.4.4"
 description = "The integrity layer for your evals: fail-closed release gates with signed, tamper-evident, pre-registered receipts — for pytest, promptfoo, claude plugin eval, or any scores. Runs in any CI, no AI agent required."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Rehan Masood", email = "rmasood524@gmail.com" }]
+authors = [{ name = "Rehan Masood", email = "rmasood112224@gmail.com" }]
 keywords = [
     "evals", "llm-evaluation", "release-gate", "regression-testing", "ci",
     "quality", "eval-driven-development", "promptfoo", "junit", "pytest",

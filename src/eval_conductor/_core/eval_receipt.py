@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from canonical import canonical_bytes                                   # noqa: E402
+from canonical import EXCLUSION_FIELDS, canonical_bytes                                   # noqa: E402
 from chain_state import (                                               # noqa: E402
     GENESIS, ChainStateError, latest_receipt_hash,
 )
@@ -339,6 +339,18 @@ def verify(receipts_dir, *, key=None, structure_only=False,
                   f"{r.get('decision')!r} but its verdicts imply {want!r} — "
                   f"the decision does not match the evidence it claims to rest on",
                   file=sys.stderr)
+            return 1
+
+    # 2b. fields the canonical hash skips must not ride along. Nothing this
+    #     tool writes uses them, so any present was added after signing and
+    #     would read as part of the receipt without being covered by it.
+    unsigned = EXCLUSION_FIELDS - {"signature", "receipt_hash"}
+    for r in receipts:
+        extra = sorted(unsigned & set(r))
+        if extra:
+            print(f"UNSIGNED FIELD FAIL: receipt {r.get('receipt_id')} carries "
+                  f"{', '.join(extra)}, which the signature does not cover — "
+                  f"added after signing", file=sys.stderr)
             return 1
 
     # 3. registry drift (informational)

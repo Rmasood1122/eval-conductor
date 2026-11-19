@@ -68,7 +68,9 @@ def _load_json(path: Path) -> object:
 def parse_junit(xml_path: Path) -> dict:
     """(tests, executed, failed, skipped) from a JUnit XML file.
 
-    executed = tests - skipped; failed includes <error>s. Missing or unparseable
+    executed = tests - skipped; failed includes <error>s. When <testcase>
+    elements are present they are counted directly; the suite's summary
+    attributes are only used for a summary-only file. Missing or unparseable
     XML raises AdapterError — the caller decides whether that is exit 2 (adapter
     CLI) or zeros (a producer that must always emit a candidate).
     """
@@ -88,8 +90,27 @@ def parse_junit(xml_path: Path) -> dict:
         skipped = sum(int(s.get("skipped", 0)) for s in suites)
     except ValueError as e:
         raise AdapterError(f"{xml_path}: non-integer suite counts: {e}")
+    if min(tests, failures, errors, skipped) < 0:
+        raise AdapterError(f"{xml_path}: negative suite counts — not a real run")
+    # The <testcase> elements are the evidence; the summary attributes are a
+    # claim about them. When cases are present, count them and ignore the
+    # claim, so a hand-edited or partial summary (failures="0", or no
+    # failures attribute at all) cannot turn failing cases into passes.
+    cases = [c for s in suites for c in s.iter("testcase")]
+    if cases:
+        tests = len(cases)
+        failed = sum(1 for c in cases
+                     if c.find("failure") is not None or c.find("error") is not None)
+        skipped = sum(1 for c in cases
+                      if c.find("skipped") is not None
+                      and c.find("failure") is None and c.find("error") is None)
+    else:
+        failed = failures + errors
+    if skipped + failed > tests:
+        raise AdapterError(f"{xml_path}: failures+skipped exceed tests — "
+                           f"inconsistent suite counts")
     return {"tests": tests, "executed": tests - skipped,
-            "failed": failures + errors, "skipped": skipped}
+            "failed": failed, "skipped": skipped}
 
 
 def junit_scores(xml_path: Path) -> dict:
@@ -98,6 +119,8 @@ def junit_scores(xml_path: Path) -> dict:
     rate = (ex - j["failed"]) / ex if ex > 0 else 0.0   # zero tests = 0.0, fail closed
     return {"test_pass_rate": round(rate, 6),
             "test_count": j["tests"],
+            "test_executed": ex,
+            "test_skipped": j["skipped"],
             "test_failures": j["failed"]}
 
 

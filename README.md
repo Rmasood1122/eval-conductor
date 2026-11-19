@@ -20,7 +20,7 @@ them. It answers the one question none of them do:
 Open source, MIT. stdlib + PyYAML only. No telemetry, no accounts, no
 infrastructure. The only outbound call is optional — `/conductor
 --verify-evidence` checks one of your own CI runs against the GitHub API — and
-receipts are signed with a key you generate locally. Dogfooded on its own 178 tests.
+receipts are signed with a key you generate locally. Dogfooded on its own test suite.
 
 *The thesis: trust an AI verdict only by what it can prove.*
 

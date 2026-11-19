@@ -1,6 +1,39 @@
 # Changelog
 
-## Unreleased
+## 1.4.4 — 2026-11-19
+
+### Fail-closed gaps (audit, Nov 2026)
+
+Each fix below has a test that failed before it (`tests/test_fail_closed_gaps.py`,
+`tests/test_action_and_receipt_hardening.py`).
+
+- `/eval-prove` badge: green "proven" only when every test ran and passed. A
+  suite that is not worse than its bar but not all passing reads
+  "passing X/Y" in yellow. Before, a first run with 0 of 3 passing printed a
+  green "proven 0/3".
+- Skipped tests no longer launder a regression. Scores now carry
+  `test_executed` and `test_skipped`; the executed count is ratcheted like the
+  test count, so turning failing tests into skips BLOCKs. Skips count as not
+  passed on the badge.
+- JUnit: `<testcase>` elements are counted directly when present; summary
+  attributes can no longer claim `failures="0"` (or omit it) over failing
+  cases. Negative or inconsistent counts are refused.
+- `prereg check`: with a key supplied, an UNSIGNED head seal fails. Before,
+  anyone with write access could replace the seal with an unsigned one and
+  `--require-seal` passed.
+- Baseline validation: a NaN/inf mean or band, a negative band, a non-numeric
+  value, a gated metric missing from the baseline, or a baseline with no
+  `metrics` object now BLOCKs (hard) or WARNs (soft). Before, each silently
+  turned regression detection off.
+- Receipts: `verify` fails a receipt that carries `_meta`, `_debug` or
+  `prev_receipt_hash_verified`, fields the signature does not cover.
+- `action.yml`: inputs reach the shell only through env. `command` is
+  allowlisted, `version` must be a version spec, and `args` is split with
+  `shlex` (quotes work, `$(...)` does not run).
+- `mcp_server.py` runs as a script (the `__main__` guard came before `run`).
+- Manifests and package metadata use the current contact email.
+- `tests/test_evidence_verify.py`: removed an `or True` that made one
+  assertion a no-op.
 
 Every command now runs under a Python that has the packages it needs. On a
 Windows machine where `python3` and `python` were different installs and only

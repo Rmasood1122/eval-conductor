@@ -86,10 +86,10 @@ def verify(working_directory: str = ".", args: str = "") -> str:
     return _run("verify", args, working_directory)
 
 
-if __name__ == "__main__":
-    run()
-
-
 def run() -> None:
     """Console entry point: eval-conductor-mcp (stdio transport)."""
     mcp.run()
+
+
+if __name__ == "__main__":
+    run()

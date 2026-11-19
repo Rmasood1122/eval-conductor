@@ -260,10 +260,17 @@ def check_drift(registry_path, *, seals_dir, key=None, bands=None) -> dict:
     status["sealed"] = True
     status["seal_id"] = seal.get("seal_id")
 
-    if key is not None and seal.get("signing_version") != "unsigned":
-        import hmac
-        want = _sign(key, seal["seal_hash"])
-        status["signature_ok"] = hmac.compare_digest(want, seal.get("signature", ""))
+    if key is not None:
+        if seal.get("signing_version") == "unsigned":
+            # Anyone with write access can author an unsigned seal. With the key
+            # in hand, an unsigned head seal is not proof of anything.
+            status["signature_ok"] = False
+            status["unsigned"] = True
+        else:
+            import hmac
+            want = _sign(key, seal["seal_hash"])
+            status["signature_ok"] = hmac.compare_digest(
+                want, str(seal.get("signature", "")))
 
     actual_reg = _sha256_file(registry_path)
     status["registry_match"] = (actual_reg is not None
@@ -276,7 +283,9 @@ def check_drift(registry_path, *, seals_dir, key=None, bands=None) -> dict:
             "registry MATCHES" if status["registry_match"] else "registry DRIFTED"]
     if status["bands_match"] is not None:
         bits.append("bands MATCH" if status["bands_match"] else "bands DRIFTED")
-    if status["signature_ok"] is False:
+    if status.get("unsigned"):
+        bits.append("seal is UNSIGNED but a key was supplied")
+    elif status["signature_ok"] is False:
         bits.append("SIGNATURE INVALID")
     status["detail"] = "; ".join(bits)
     return status

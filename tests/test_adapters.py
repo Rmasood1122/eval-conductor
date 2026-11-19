@@ -30,7 +30,8 @@ def junit(tmp_path, **kw):
 
 def test_junit_all_pass(tmp_path):
     s = junit_scores(junit(tmp_path))
-    assert s == {"test_pass_rate": 1.0, "test_count": 10, "test_failures": 0}
+    assert s == {"test_pass_rate": 1.0, "test_count": 10, "test_executed": 10,
+                 "test_skipped": 0, "test_failures": 0}
 
 
 def test_junit_failures_and_errors_both_count(tmp_path):

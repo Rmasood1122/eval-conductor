@@ -10,10 +10,14 @@ URL = "https://github.com/Acme/widgets/actions/runs/123"
 SLUG = "acme/widgets"
 
 
-def ok_fetch(run_id="123", status="completed", conclusion="success"):
+def ok_fetch(run_id="123", status="completed", conclusion="success",
+             returned_id=None):
+    """Fake API. It always checks the URL asks for run_id; returned_id lets a
+    test make the API answer with a different run."""
     def fetch(url):
-        assert url.endswith(f"/actions/runs/{run_id}") or True
-        return {"id": int(run_id), "status": status, "conclusion": conclusion}
+        assert url.endswith(f"/actions/runs/{run_id}"), url
+        rid = returned_id if returned_id is not None else run_id
+        return {"id": int(rid), "status": status, "conclusion": conclusion}
     return fetch
 
 
@@ -45,7 +49,7 @@ def test_missing_run_refused():
 
 
 def test_id_mismatch_refused():
-    p = verify_ci_run(URL, SLUG, fetch=ok_fetch(run_id="999"))
+    p = verify_ci_run(URL, SLUG, fetch=ok_fetch(returned_id="999"))
     assert p and "returned run 999" in p
 
 

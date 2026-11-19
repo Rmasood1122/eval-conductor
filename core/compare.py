@@ -48,7 +48,12 @@ def judge_metric(spec: dict, candidate: float, base: dict | None) -> Verdict:
         return Verdict(name, blocking, candidate, None, threshold, band, "BLOCK",
                        f"non-finite score ({candidate}) — invalid measurement, fail closed")
     base_mean = None
-    if base is not None:
+    bad = _invalid_baseline_entry(base) if base is not None else None
+    if bad and blocking != "monitor_only":
+        return Verdict(name, blocking, candidate, None, threshold, band,
+                       "BLOCK" if blocking == "hard" else "WARN",
+                       f"invalid baseline ({bad}) — regenerate it, fail closed")
+    if base is not None and not bad:
         method = spec.get("band_method", "sigma")
         if method == "mad":
             # F-E2 robust path: centre on the median, band from MAD. A baseline
@@ -86,16 +91,61 @@ def judge_metric(spec: dict, candidate: float, base: dict | None) -> Verdict:
     return Verdict(name, blocking, candidate, base_mean, threshold, band, "PASS", "ok")
 
 
+def _is_num(x) -> bool:
+    return isinstance(x, numbers.Real) and not isinstance(x, bool)
+
+
+def _invalid_baseline_entry(base) -> str | None:
+    """Why a baseline entry can't be trusted, or None. A NaN mean compares
+    False against everything and an infinite band swallows any regression,
+    so either would quietly turn the regression check off."""
+    if not isinstance(base, dict):
+        return f"entry is {type(base).__name__}, not an object"
+    for key in ("mean", "band_2sigma", "median", "band_mad"):
+        if key not in base:
+            if key == "mean":
+                return "no mean"
+            continue
+        v = base[key]
+        if not _is_num(v) or not math.isfinite(v):
+            return f"{key}={v!r} is not a finite number"
+        if key.startswith("band") and v < 0:
+            return f"{key}={v!r} is negative"
+    return None
+
+
 def decide(registry: list[dict], candidate_scores: dict, baseline: dict | None):
     verdicts = []
+    base_metrics = None
+    if baseline is not None:
+        bm = baseline.get("metrics") if isinstance(baseline, dict) else None
+        if not isinstance(bm, dict):
+            # A baseline that exists but has no metrics object can't be judged
+            # against; ignoring it would silently drop regression detection.
+            return "BLOCK", [Verdict(s["name"], s.get("blocking", "soft"),
+                                     float("nan"), None, float(s["threshold"]),
+                                     0.0, "BLOCK",
+                                     "malformed baseline (no metrics object) — "
+                                     "regenerate it, fail closed")
+                             for s in registry]
+        base_metrics = bm
     for spec in registry:
         name = spec["name"]
+        if (base_metrics is not None and name not in base_metrics
+                and spec.get("blocking", "soft") != "monitor_only"):
+            tier = spec.get("blocking", "soft")
+            verdicts.append(Verdict(name, tier, float("nan"),
+                                    None, float(spec["threshold"]), 0.0,
+                                    "BLOCK" if tier == "hard" else "WARN",
+                                    "metric missing from baseline — regenerate "
+                                    "the baseline, fail closed"))
+            continue
         if name not in candidate_scores:
             verdicts.append(Verdict(name, spec.get("blocking", "soft"), float("nan"),
                                     None, float(spec["threshold"]), 0.0, "BLOCK",
                                     "metric missing from candidate run"))
             continue
-        base = (baseline or {}).get("metrics", {}).get(name) if baseline else None
+        base = base_metrics.get(name) if base_metrics is not None else None
         raw_value = candidate_scores[name]
         if isinstance(raw_value, bool) or not isinstance(raw_value, numbers.Real):
             # IE-07: a non-numeric score (str "0.99", null, bool, list…) is not
